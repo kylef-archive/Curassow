@@ -82,6 +82,22 @@ on Currasow on Linux.
 
 Yes, check out the [Hello World example](https://github.com/kylef/Currasow-example-helloworld).
 
+#### How can I change the number of workers dynamically?
+
+TTIN and TTOU signals can be sent to the master to increase or decrease the number of workers.
+
+To increase the worker count by one, where $PID is the PID of the master process.
+
+```
+$ kill -TTIN $PID
+```
+
+To decrease the worker count by one:
+
+```
+$ kill -TTOU $PID
+```
+
 ## License
 
 Currasow is licensed under the BSD license. See [LICENSE](LICENSE) for more

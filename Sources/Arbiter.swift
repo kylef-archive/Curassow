@@ -24,13 +24,21 @@ enum Address : CustomStringConvertible {
   }
 }
 
+protocol SignalHandler {
+  func handleTTIN()
+  func handleTTOU()
+}
+
+/// Global arbiter is unfortunately required so we can handle signals
+var arbiter: SignalHandler!
+
 
 /// Arbiter maintains the worker processes
-class Arbiter<Worker : WorkerType> {
+class Arbiter<Worker : WorkerType> : SignalHandler {
   var listeners: [Socket] = []
   var workers: [pid_t: Worker] = [:]
 
-  let numberOfWorkers: Int
+  var numberOfWorkers: Int
   let addresses: [Address]
 
   let application: RequestType -> ResponseType
@@ -48,8 +56,21 @@ class Arbiter<Worker : WorkerType> {
     }
   }
 
+  func registerSignals() throws {
+    arbiter = self
+
+    signal(SIGTTIN) { _ in
+      arbiter.handleTTIN()
+    }
+
+    signal(SIGTTOU) { _ in
+      arbiter.handleTTOU()
+    }
+  }
+
   // Main run loop for the master process
   func run() throws {
+    try registerSignals()
     try createSockets()
 
     manageWorkers()
@@ -66,6 +87,22 @@ class Arbiter<Worker : WorkerType> {
     Glibc.sleep(10) // Until method is implemented, don't use CPU too much
   }
 
+  // MARK: Handle Signals
+
+  /// Increases the amount of workers by one
+  func handleTTIN() {
+    ++numberOfWorkers
+    manageWorkers()
+  }
+
+  /// Decreases the amount of workers by one
+  func handleTTOU() {
+    if numberOfWorkers > 1 {
+      --numberOfWorkers
+      manageWorkers()
+    }
+  }
+
   // MARK: Worker
 
   // Maintain number of workers by spawning or killing as required.
@@ -77,8 +114,10 @@ class Arbiter<Worker : WorkerType> {
   // Spawn workers until we have enough
   func spawnWorkers() {
     let neededWorkers = numberOfWorkers - workers.count
-    for _ in 0..<neededWorkers {
-      spawnWorker()
+    if neededWorkers > 0 {
+      for _ in 0..<neededWorkers {
+        spawnWorker()
+      }
     }
   }
 

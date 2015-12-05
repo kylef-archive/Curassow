@@ -42,7 +42,7 @@ class HTTPParser {
 
         let crln: [CChar] = [13, 10, 13, 10]
         if let (top, bottom) = buffer.find(crln) {
-          if let headers = String.fromCString(strdup(top)) {
+          if let headers = String.fromCString(top) {
             return (headers, bottom)
           }
 

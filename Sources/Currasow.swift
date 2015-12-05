@@ -1,15 +1,21 @@
+import Glibc
 import Nest
 import Commander
 import Inquiline
 
 
-extension UInt16 : ArgumentConvertible {
-  public init(parser: ArgumentParser) throws {
+extension Address : ArgumentConvertible {
+  init(parser: ArgumentParser) throws {
     if let value = parser.shift() {
-      if let value = UInt16(value) {
-        self.init(value)
+      let components = value.characters.split(":").map(String.init)
+      if components.count != 2 {
+        throw ArgumentError.InvalidType(value: value, type: "hostname and port separated by `:`.", argument: nil)
+      }
+
+      if let port = UInt16(components[1]) {
+        self = .IP(hostname: components[0], port: port)
       } else {
-        throw ArgumentError.InvalidType(value: value, type: "number", argument: nil)
+        throw ArgumentError.InvalidType(value: components[1], type: "number", argument: "port")
       }
     } else {
       throw ArgumentError.MissingValue(argument: nil)
@@ -21,10 +27,9 @@ extension UInt16 : ArgumentConvertible {
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   command(
     Option("workers", 1),
-    Option("address", "0.0.0.0"),
-    Option("port", UInt16(8000))
-  ) { workers, address, port in
-    let arbiter = Arbiter<SyncronousWorker>(application: closure, workers: workers, addresses: [Address.IP(address: address, port: port)])
+    Option("bind", Address.IP(hostname: "0.0.0.0", port: 8000))
+  ) { workers, address in
+    let arbiter = Arbiter<SyncronousWorker>(application: closure, workers: workers, addresses: [address])
     try arbiter.run()
   }.run()
 }

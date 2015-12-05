@@ -3,13 +3,13 @@ import Nest
 
 
 enum Address : CustomStringConvertible {
-  case IP(address: String, port: UInt16)
+  case IP(hostname: String, port: UInt16)
 
   func socket() throws -> Socket {
     switch self {
-    case let IP(address, port):
+    case let IP(hostname, port):
       let socket = try Socket()
-      try socket.bind(address, port: port)
+      try socket.bind(hostname, port: port)
       try socket.listen(20)
       // TODO: Set socket non blocking
       return socket
@@ -18,8 +18,8 @@ enum Address : CustomStringConvertible {
 
   var description: String {
     switch self {
-    case let IP(address, port):
-      return "\(address):\(port)"
+    case let IP(hostname, port):
+      return "\(hostname):\(port)"
     }
   }
 }

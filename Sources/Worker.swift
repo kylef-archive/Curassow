@@ -63,6 +63,7 @@ final class SyncronousWorker : WorkerType {
       handle(client, request: request)
     }
 
+    client.shutdown()
     client.close()
   }
 

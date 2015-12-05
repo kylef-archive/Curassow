@@ -99,6 +99,10 @@ class Socket {
     Glibc.close(descriptor)
   }
 
+  func shutdown() {
+    Glibc.shutdown(descriptor, Int32(SHUT_RDWR))
+  }
+
   func send(output: String) {
     output.withCString { bytes in
       Glibc.send(descriptor, bytes, Int(strlen(bytes)), 0)

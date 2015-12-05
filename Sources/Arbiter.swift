@@ -2,15 +2,25 @@ import Glibc
 import Nest
 
 
-enum Address {
+enum Address : CustomStringConvertible {
   case IP(address: String, port: UInt16)
 
   func socket() throws -> Socket {
-    let socket = try Socket()
-    try socket.bind("0.0.0.0", port: 8000)
-    try socket.listen(20)
-    // TODO: Set socket non blocking
-    return socket
+    switch self {
+    case let IP(address, port):
+      let socket = try Socket()
+      try socket.bind(address, port: port)
+      try socket.listen(20)
+      // TODO: Set socket non blocking
+      return socket
+    }
+  }
+
+  var description: String {
+    switch self {
+    case let IP(address, port):
+      return "\(address):\(port)"
+    }
   }
 }
 
@@ -34,7 +44,7 @@ class Arbiter<Worker : WorkerType> {
   func createSockets() throws {
     for address in addresses {
       listeners.append(try address.socket())
-      print("[arbiter] Listening on port 8000")
+      print("[arbiter] Listening on port \(address)")
     }
   }
 

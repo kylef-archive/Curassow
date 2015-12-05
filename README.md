@@ -48,6 +48,19 @@ $ ./.build/release/HelloWorld --workers 3
 [arbiter] Started worker process 18407
 ```
 
+### FAQ
+
+#### What platforms does Currasow support?
+
+Currasow is built for Linux. Unfortunately OS X's version of Swift doesn't
+expose the underlying `fork()` API so it's not possible to implement a
+pre-forking HTTP server for OS X at the moment.
+
+This makes Currasow Linux only, however since it's built around the Nest
+specification, you can mix and match any server combination. You can use
+another Nest compatible web server on OS X for development, and the high
+performance pre-forking server on Currasow on Linux.
+
 ## License
 
 Currasow is licensed under the BSD license. See [LICENSE](LICENSE) for more

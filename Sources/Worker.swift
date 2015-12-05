@@ -69,7 +69,7 @@ final class SyncronousWorker : WorkerType {
     } catch let error as HTTPParserError {
       response = error.response()
     } catch {
-      response = Response(.InternalServerError, contentType: "plain/text", body: "Internal Server Error")
+      response = Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
     }
 
     sendResponse(client, response: response)
@@ -81,7 +81,7 @@ final class SyncronousWorker : WorkerType {
   func sendResponse(client: Socket, response: ResponseType) {
     client.send("HTTP/1.1 \(response.statusLine)\r\n")
 
-    client.send("Connection: Close\r\n")
+    client.send("Connection: close\r\n")
     var hasLength = false
 
     for (key, value) in response.headers {

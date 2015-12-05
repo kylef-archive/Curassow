@@ -11,11 +11,11 @@ enum HTTPParserError : ErrorType {
   func response() -> ResponseType {
     switch self {
     case let .BadSyntax(syntax):
-      return Response(.BadRequest, contentType: "plain/text", body: "Bad Syntax (\(syntax))")
+      return Response(.BadRequest, contentType: "text/plain", body: "Bad Syntax (\(syntax))")
     case let .BadVersion(version):
-      return Response(.BadRequest, contentType: "plain/text", body: "Bad Version (\(version))")
+      return Response(.BadRequest, contentType: "text/plain", body: "Bad Version (\(version))")
     case .Internal:
-      return Response(.InternalServerError, contentType: "plain/text", body: "Internal Server Error")
+      return Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
     }
   }
 }

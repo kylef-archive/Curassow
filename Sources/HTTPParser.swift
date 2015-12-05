@@ -6,6 +6,7 @@ import Inquiline
 enum HTTPParserError : ErrorType {
   case BadSyntax(String)
   case BadVersion(String)
+  case Internal
 
   func response() -> ResponseType {
     switch self {
@@ -13,6 +14,8 @@ enum HTTPParserError : ErrorType {
       return Response(.BadRequest, contentType: "plain/text", body: "Bad Syntax (\(syntax))")
     case let .BadVersion(version):
       return Response(.BadRequest, contentType: "plain/text", body: "Bad Version (\(version))")
+    case .Internal:
+      return Response(.InternalServerError, contentType: "plain/text", body: "Internal Server Error")
     }
   }
 }
@@ -43,7 +46,7 @@ class HTTPParser {
             return (headers, bottom)
           }
 
-          fatalError("Cannot convert buffer to string")
+          throw HTTPParserError.Internal
         }
 
         // TODO bail if server never sends us \r\n\r\n

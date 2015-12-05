@@ -44,7 +44,7 @@ class Arbiter<Worker : WorkerType> {
   func createSockets() throws {
     for address in addresses {
       listeners.append(try address.socket())
-      print("[arbiter] Listening on port \(address)")
+      print("[arbiter] Listening on \(address)")
     }
   }
 

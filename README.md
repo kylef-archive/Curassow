@@ -40,12 +40,26 @@ serve { request in
 $ swift build --configuration release
 ```
 
+### Command Line Interface
+
+Currasow provides you with a command line interface to configure the
+address you want to listen on and the amount of workers you wish to use.
+
+##### Setting the workers
+
 ```shell
 $ ./.build/release/HelloWorld --workers 3
-[arbiter] Listening on port 0.0.0.0:8000
+[arbiter] Listening on 0.0.0.0:8000
 [arbiter] Started worker process 18405
 [arbiter] Started worker process 18406
 [arbiter] Started worker process 18407
+```
+
+##### Configuring the address
+
+```shell
+$ ./.build/release/HelloWorld --bind 127.0.0.1:9000
+[arbiter] Listening on 127.0.0.1:9000
 ```
 
 ### FAQ

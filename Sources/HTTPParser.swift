@@ -46,6 +46,7 @@ class HTTPParser {
             return (headers, bottom)
           }
 
+          print("[worker] Failed to decode data from client")
           throw HTTPParserError.Internal
         }
 

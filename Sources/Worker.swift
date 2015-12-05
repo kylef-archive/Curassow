@@ -69,6 +69,7 @@ final class SyncronousWorker : WorkerType {
     } catch let error as HTTPParserError {
       response = error.response()
     } catch {
+      print("[worker] Unknown error: \(error)")
       response = Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
     }
 

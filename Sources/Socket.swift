@@ -1,31 +1,6 @@
 import Glibc
 
 
-class Data {
-  let bytes: UnsafeMutablePointer<Int8>
-  let capacity: Int
-
-  init(capacity: Int) {
-    bytes = UnsafeMutablePointer<Int8>(malloc(capacity + 1))
-    self.capacity = capacity
-  }
-
-  deinit {
-    free(bytes)
-  }
-
-  var characters: [CChar] {
-    var data = [CChar](count: capacity, repeatedValue: 0)
-    memcpy(&data, bytes, data.count)
-    return data
-  }
-
-  var string: String {
-    return String(characters)
-  }
-}
-
-
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
   let error: String?
@@ -109,13 +84,11 @@ class Socket {
     }
   }
 
-/*
-  func read(bytes: Int) throws -> Data {
+  func read(bytes: Int) throws -> [CChar] {
     let data = Data(capacity: bytes)
-    let _ = Glibc.read(socket.descriptor, data.bytes, data.capacity)
-    return data
+    let bytes = Glibc.read(descriptor, data.bytes, data.capacity)
+    return Array(data.characters[0..<bytes])
   }
-*/
 
   private func htons(value: CUnsignedShort) -> CUnsignedShort {
     return (value << 8) + (value >> 8)

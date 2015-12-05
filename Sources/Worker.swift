@@ -59,17 +59,26 @@ final class SyncronousWorker : WorkerType {
 
   func handle(client: Socket) {
     let parser = HTTPParser(socket: client)
-    if let request = try? parser.parse() {
-      handle(client, request: request)
+
+    let response: ResponseType
+
+    do {
+      let request = try parser.parse()
+      response = application(request)
+      print("[worker] \(request.method) \(request.path) - \(response.statusLine)")
+    } catch let error as HTTPParserError {
+      response = error.response()
+    } catch {
+      response = Response(.InternalServerError, contentType: "plain/text", body: "Internal Server Error")
     }
+
+    sendResponse(client, response: response)
 
     client.shutdown()
     client.close()
   }
 
-  func handle(client: Socket, request: RequestType) {
-    let response = application(request)
-
+  func sendResponse(client: Socket, response: ResponseType) {
     client.send("HTTP/1.1 \(response.statusLine)\r\n")
 
     client.send("Connection: Close\r\n")
@@ -99,8 +108,6 @@ final class SyncronousWorker : WorkerType {
     if let body = response.body {
       client.send(body)
     }
-
-    print("[worker] \(request.method) \(request.path) - \(response.statusLine)")
   }
 }
 

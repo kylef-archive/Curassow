@@ -1,5 +1,4 @@
-import Darwin
-import Dispatch
+import Glibc
 
 
 class Data {
@@ -56,7 +55,7 @@ class Socket {
   let descriptor: Descriptor
 
   init() throws {
-    descriptor = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+    descriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
     assert(descriptor > 0)
 
     var value: Int32 = 1;
@@ -70,35 +69,26 @@ class Socket {
   }
 
   func listen(backlog: Int32) throws {
-    if Darwin.listen(descriptor, backlog) == -1 {
+    if Glibc.listen(descriptor, backlog) == -1 {
       throw SocketError()
     }
   }
 
   func bind(address: String, port: Port) throws {
-    var addr = sockaddr_in(
-      sin_len: __uint8_t(sizeof(sockaddr_in)),
-      sin_family: sa_family_t(AF_INET),
-      sin_port: htons(in_port_t(port)),
-      sin_addr: in_addr(s_addr: inet_addr(address)),
-      sin_zero: (0, 0, 0, 0, 0, 0, 0, 0)
-    )
+    var addr = sockaddr_in()
+    addr.sin_family = sa_family_t(AF_INET)
+    addr.sin_port = in_port_t(htons(in_port_t(port)))
+    addr.sin_addr = in_addr(s_addr: in_addr_t(0))
+    addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
-    var saddr = sockaddr(
-      sa_len: 0,
-      sa_family: 0,
-      sa_data: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    )
-
-    memcpy(&saddr, &addr, Int(addr.sin_len))
-
-    guard Darwin.bind(descriptor, &saddr, socklen_t(addr.sin_len)) != -1 else {
+   let len = socklen_t(UInt8(sizeof(sockaddr_in)))
+    guard Glibc.bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }
   }
 
   func accept() throws -> Socket {
-    let descriptor = Darwin.accept(self.descriptor, nil, nil)
+    let descriptor = Glibc.accept(self.descriptor, nil, nil)
     if descriptor == -1 {
       throw SocketError()
     }
@@ -106,36 +96,28 @@ class Socket {
   }
 
   func close() {
-    Darwin.close(descriptor)
+    Glibc.close(descriptor)
   }
 
   func send(output: String) {
     output.withCString { bytes in
-      Darwin.send(descriptor, bytes, Int(strlen(bytes)), 0)
+      Glibc.send(descriptor, bytes, Int(strlen(bytes)), 0)
     }
   }
 
-  func consume(closure: (dispatch_source_t, Socket) -> ()) {
-    let source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, UInt(descriptor), 0, dispatch_get_main_queue())
-    dispatch_source_set_event_handler(source) {
-      closure(source, self)
-    }
-    dispatch_source_set_cancel_handler(source) {
-      self.close()
-    }
-    dispatch_resume(source)
+/*
+  func read(bytes: Int) throws -> Data {
+    let data = Data(capacity: bytes)
+    let _ = Glibc.read(socket.descriptor, data.bytes, data.capacity)
+    return data
   }
-
-  func consumeData(closure: (Socket, Data) -> ()) {
-    consume { source, socket in
-      let estimated = dispatch_source_get_data(source)
-      let data = Data(capacity: Int(estimated))
-      let _ = read(socket.descriptor, data.bytes, data.capacity)
-      closure(socket, data)
-    }
-  }
+*/
 
   private func htons(value: CUnsignedShort) -> CUnsignedShort {
     return (value << 8) + (value >> 8)
+  }
+
+  private func sockaddr_cast(p: UnsafeMutablePointer<Void>) -> UnsafeMutablePointer<sockaddr> {
+    return UnsafeMutablePointer<sockaddr>(p)
   }
 }

@@ -1,9 +1,8 @@
-import Darwin
-import Dispatch
 import Nest
 import Commander
 import Inquiline
 
+/*
 
 @noreturn func serve(address: String, _ port: UInt16, closure: RequestType -> ResponseType) {
   let socket: Socket
@@ -60,7 +59,7 @@ import Inquiline
   print("Listening on \(address):\(port)")
   dispatch_main()
 }
-
+*/
 
 extension UInt16 : ArgumentConvertible {
   public init(parser: ArgumentParser) throws {
@@ -79,9 +78,11 @@ extension UInt16 : ArgumentConvertible {
 
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   command(
+    Option("workers", 1),
     Option("address", "0.0.0.0"),
     Option("port", UInt16(8000))
-  ) { address, port in
-    serve(address, port, closure: closure)
+  ) { workers, address, port in
+    let arbiter = Arbiter<SyncronousWorker>(application: closure, workers: workers, addresses: [Address.IP(address: address, port: port)])
+    try arbiter.run()
   }.run()
 }

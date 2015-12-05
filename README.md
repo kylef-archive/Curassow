@@ -1,5 +1,7 @@
 # Curassow
 
+[![Build Status](https://travis-ci.org/kylef/Currasow.svg)](https://travis-ci.org/kylef/Currasow)
+
 Curassow is a Swift [Nest](https://github.com/nestproject/Nest)
 HTTP Server. It uses the pre-fork worker model and it's similar to Python's
 Gunicorn and Ruby's Unicorn.

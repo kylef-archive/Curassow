@@ -1,4 +1,16 @@
+#if os(Linux)
 import Glibc
+
+private let system_fork = Glibc.fork
+private let system_sleep = Glibc.sleep
+#else
+import Darwin.C
+
+private let system_sleep = Darwin.sleep
+
+@_silgen_name("fork") private func system_fork() -> Int32
+#endif
+
 import Nest
 
 
@@ -84,7 +96,7 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
   func sleep() {
     // Wait's for stuff happening on our signal
     // TODO make signals for worker<>arbiter communcation
-    Glibc.sleep(10) // Until method is implemented, don't use CPU too much
+    system_sleep(10) // Until method is implemented, don't use CPU too much
   }
 
   // MARK: Handle Signals
@@ -130,7 +142,7 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
   func spawnWorker() {
     let worker = Worker(listeners: listeners, application: application)
 
-    let pid = fork()
+    let pid = system_fork()
     if pid != 0 {
       workers[pid] = worker
       print("[arbiter] Started worker process \(pid)")

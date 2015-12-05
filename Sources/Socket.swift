@@ -1,5 +1,28 @@
+#if os(Linux)
 import Glibc
 
+private let sock_stream = SOCK_STREAM.rawValue
+
+private let system_accept = Glibc.accept
+private let system_bind = Glibc.bind
+private let system_close = Glibc.close
+private let system_listen = Glibc.listen
+private let system_read = Glibc.read
+private let system_send = Glibc.send
+private let system_shutdown = Glibc.shutdown
+#else
+import Darwin.C
+
+private let sock_stream = SOCK_STREAM
+
+private let system_accept = Darwin.accept
+private let system_bind = Darwin.bind
+private let system_close = Darwin.close
+private let system_listen = Darwin.listen
+private let system_read = Darwin.read
+private let system_send = Darwin.send
+private let system_shutdown = Darwin.shutdown
+#endif
 
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
@@ -30,7 +53,11 @@ class Socket {
   let descriptor: Descriptor
 
   init() throws {
-    descriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
+#if os(Linux)
+    descriptor = socket(AF_INET, Int32(), 0)
+#else
+    descriptor = socket(AF_INET, sock_stream, IPPROTO_TCP)
+#endif
     assert(descriptor > 0)
 
     var value: Int32 = 1;
@@ -44,7 +71,7 @@ class Socket {
   }
 
   func listen(backlog: Int32) throws {
-    if Glibc.listen(descriptor, backlog) == -1 {
+    if system_listen(descriptor, backlog) == -1 {
       throw SocketError()
     }
   }
@@ -57,13 +84,13 @@ class Socket {
     addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
    let len = socklen_t(UInt8(sizeof(sockaddr_in)))
-    guard Glibc.bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
+    guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }
   }
 
   func accept() throws -> Socket {
-    let descriptor = Glibc.accept(self.descriptor, nil, nil)
+    let descriptor = system_accept(self.descriptor, nil, nil)
     if descriptor == -1 {
       throw SocketError()
     }
@@ -71,22 +98,22 @@ class Socket {
   }
 
   func close() {
-    Glibc.close(descriptor)
+    system_close(descriptor)
   }
 
   func shutdown() {
-    Glibc.shutdown(descriptor, Int32(SHUT_RDWR))
+    system_shutdown(descriptor, Int32(SHUT_RDWR))
   }
 
   func send(output: String) {
     output.withCString { bytes in
-      Glibc.send(descriptor, bytes, Int(strlen(bytes)), 0)
+      system_send(descriptor, bytes, Int(strlen(bytes)), 0)
     }
   }
 
   func read(bytes: Int) throws -> [CChar] {
     let data = Data(capacity: bytes)
-    let bytes = Glibc.read(descriptor, data.bytes, data.capacity)
+    let bytes = system_read(descriptor, data.bytes, data.capacity)
     return Array(data.characters[0..<bytes])
   }
 

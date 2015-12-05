@@ -1,5 +1,8 @@
+#if os(Linux)
 import Glibc
-
+#else
+import Darwin.C
+#endif
 
 class Data {
   let bytes: UnsafeMutablePointer<Int8>

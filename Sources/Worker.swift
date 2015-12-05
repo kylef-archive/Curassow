@@ -39,7 +39,7 @@ final class SyncronousWorker : WorkerType {
 
   func runMultiple(listeners: [Socket]) {
     // TODO multiple listners
-    fatalError("Currasow Syncronous worker cannot yet handle multiple listeners")
+    fatalError("Curasow Syncronous worker cannot yet handle multiple listeners")
   }
 
   func notify() {

@@ -1,11 +1,12 @@
 # Curassow
 
-Curassow is a Swift [Nest](http://github.com/nestproject/Nest)
+Curassow is a Swift [Nest](https://github.com/nestproject/Nest)
 HTTP Server. It uses the pre-fork worker model and it's similar to Python's
 Gunicorn and Ruby's Unicorn.
 
-It exposes a Nest compatible interface for your application, allowing you to
-use Currasow with any Nest compatible web frameworks of your choice.
+It exposes a [Nest-compatible interface](https://github.com/nestproject/Nest)
+for your application, allowing you to use Currasow with any Nest compatible
+web frameworks of your choice.
 
 ## Usage
 

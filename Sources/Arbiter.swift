@@ -64,7 +64,7 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
   func createSockets() throws {
     for address in addresses {
       listeners.append(try address.socket())
-      print("[arbiter] Listening on \(address)")
+      print("[arbiter] Listening at http://\(address) (\(getpid()))")
     }
   }
 
@@ -135,7 +135,15 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
 
   // Kill unused workers, oldest first
   func killWorkers() {
-    // TODO
+    let killCount = workers.count - numberOfWorkers
+    if killCount > 0 {
+      for _ in 0..<killCount {
+        if let (pid, _) = workers.popFirst() {
+          print("[arbiter] Killing worker process \(pid)")
+          kill(pid, SIGKILL)
+        }
+      }
+    }
   }
 
   // Spawns a new worker process

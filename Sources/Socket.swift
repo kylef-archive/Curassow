@@ -26,20 +26,14 @@ private let system_shutdown = Darwin.shutdown
 
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
-  let error: String?
   let number: Int32
 
   init(function: String = __FUNCTION__) {
     self.function = function
     self.number = errno
-    error = String.fromCString(strerror(errno))
   }
 
   var description: String {
-    if let error = error {
-      return "\(error) from Socket.\(function) [\(number)]"
-    }
-
     return "Socket.\(function) failed [\(number)]"
   }
 }

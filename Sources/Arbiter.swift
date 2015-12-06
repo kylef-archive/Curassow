@@ -63,7 +63,7 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
   func createSockets() throws {
     for address in addresses {
       listeners.append(try address.socket())
-      print("[arbiter] Listening at http://\(address) (\(getpid()))")
+      logger.info("Listening at http://\(address) (\(getpid()))")
     }
   }
 

@@ -92,6 +92,10 @@ To decrease the worker count by one:
 $ kill -TTOU $PID
 ```
 
+#### Is it ready for production?
+
+Currently, if your code causes a crash, the worker dies and Curassow doesn't yet automatically detect this and spawn new workers, see ([#1](https://github.com/kylef/Curassow/issues/1)).
+
 ## License
 
 Curassow is licensed under the BSD license. See [LICENSE](LICENSE) for more

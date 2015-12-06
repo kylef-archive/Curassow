@@ -23,7 +23,7 @@ class Data {
     return data
   }
 
-  var string: String {
-    return String(characters)
+  var string: String? {
+    return String.fromCString(characters)
   }
 }

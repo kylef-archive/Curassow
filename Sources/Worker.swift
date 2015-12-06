@@ -1,25 +1,35 @@
+#if os(Linux)
+import Glibc
+#else
+import Darwin.C
+#endif
+
 import Nest
 import Inquiline
 
 
 protocol WorkerType {
-  init(listeners: [Socket], application: RequestType -> ResponseType)
+  init(logger: Logger, listeners: [Socket], application: RequestType -> ResponseType)
   func run()
 }
 
 
 final class SyncronousWorker : WorkerType {
+  let logger: Logger
   let listeners: [Socket]
   let timeout: Double = 0.5
   let application: RequestType -> ResponseType
   var isAlive: Bool = false
 
-  init(listeners: [Socket], application: RequestType -> ResponseType) {
+  init(logger: Logger, listeners: [Socket], application: RequestType -> ResponseType) {
+    self.logger = logger
     self.listeners = listeners
     self.application = application
   }
 
   func run() {
+    logger.info("Booting worker process with pid: \(getpid())")
+
     isAlive = true
 
     if listeners.count == 1 {
@@ -111,4 +121,3 @@ final class SyncronousWorker : WorkerType {
     }
   }
 }
-

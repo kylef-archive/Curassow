@@ -41,12 +41,11 @@ protocol SignalHandler {
   func handleTTOU()
 }
 
-/// Global arbiter is unfortunately required so we can handle signals
 var arbiter: SignalHandler!
-
 
 /// Arbiter maintains the worker processes
 class Arbiter<Worker : WorkerType> : SignalHandler {
+  let logger = Logger()
   var listeners: [Socket] = []
   var workers: [pid_t: Worker] = [:]
 
@@ -139,7 +138,6 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
     if killCount > 0 {
       for _ in 0..<killCount {
         if let (pid, _) = workers.popFirst() {
-          print("[arbiter] Killing worker process \(pid)")
           kill(pid, SIGKILL)
         }
       }
@@ -148,12 +146,11 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
 
   // Spawns a new worker process
   func spawnWorker() {
-    let worker = Worker(listeners: listeners, application: application)
+    let worker = Worker(logger: logger, listeners: listeners, application: application)
 
     let pid = system_fork()
     if pid != 0 {
       workers[pid] = worker
-      print("[arbiter] Started worker process \(pid)")
       return
     }
 

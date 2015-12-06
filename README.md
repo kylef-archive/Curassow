@@ -70,15 +70,7 @@ $ ./.build/release/HelloWorld --bind 127.0.0.1:9000
 
 #### What platforms does Curassow support?
 
-Curassow is built for Linux. Unfortunately OS X's version of Swift doesn't
-expose the underlying `fork()` API so it's not possible to implement a
-pre-forking HTTP server for OS X at the moment.
-
-This makes Curassow Linux only, however since it's built around the [Nest
-specification](https://github.com/nestproject/Nest), you can mix and match
-any server combination. You can use another Nest compatible web server on
-OS X for development, and the high performance pre-forking server
-on Curassow on Linux.
+Curassow supports both Linux and OS X.
 
 #### Is there any example applications?
 

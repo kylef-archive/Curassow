@@ -1,3 +1,4 @@
+SWIFTC=swiftc
 UNAME=$(shell uname)
 
 ifeq ($(UNAME), Darwin)

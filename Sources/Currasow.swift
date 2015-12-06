@@ -1,4 +1,9 @@
+#if os(Linux)
 import Glibc
+#else
+import Darwin
+#endif
+
 import Nest
 import Commander
 import Inquiline

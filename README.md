@@ -1,18 +1,18 @@
 # Curassow
 
-[![Build Status](https://travis-ci.org/kylef/Curasow.svg)](https://travis-ci.org/kylef/Curasow)
+[![Build Status](https://travis-ci.org/kylef/Curassow.svg)](https://travis-ci.org/kylef/Curassow)
 
 Curassow is a Swift [Nest](https://github.com/nestproject/Nest)
 HTTP Server. It uses the pre-fork worker model and it's similar to Python's
 Gunicorn and Ruby's Unicorn.
 
 It exposes a [Nest-compatible interface](https://github.com/nestproject/Nest)
-for your application, allowing you to use Curasow with any Nest compatible
+for your application, allowing you to use Curassow with any Nest compatible
 web frameworks of your choice.
 
 ## Usage
 
-To use Curasow, you will need to install it via the Swift Package Manager,
+To use Curassow, you will need to install it via the Swift Package Manager,
 you can add it to the list of dependencies in your `Package.swift`:
 
 ```swift
@@ -21,7 +21,7 @@ import PackageDescription
 let package = Package(
   name: "HelloWorld",
   dependencies: [
-    .Package(url: "https://github.com/kylef/Currasow.git", majorVersion: 0, minor: 1),
+    .Package(url: "https://github.com/kylef/Curassow.git", majorVersion: 0, minor: 1),
   ]
 )
 ```
@@ -46,7 +46,7 @@ $ swift build --configuration release
 
 ### Command Line Interface
 
-Curasow provides you with a command line interface to configure the
+Curassow provides you with a command line interface to configure the
 address you want to listen on and the amount of workers you wish to use.
 
 ##### Setting the workers
@@ -68,21 +68,21 @@ $ ./.build/release/HelloWorld --bind 127.0.0.1:9000
 
 ### FAQ
 
-#### What platforms does Curasow support?
+#### What platforms does Curassow support?
 
-Curasow is built for Linux. Unfortunately OS X's version of Swift doesn't
+Curassow is built for Linux. Unfortunately OS X's version of Swift doesn't
 expose the underlying `fork()` API so it's not possible to implement a
 pre-forking HTTP server for OS X at the moment.
 
-This makes Curasow Linux only, however since it's built around the [Nest
+This makes Curassow Linux only, however since it's built around the [Nest
 specification](https://github.com/nestproject/Nest), you can mix and match
 any server combination. You can use another Nest compatible web server on
 OS X for development, and the high performance pre-forking server
-on Curasow on Linux.
+on Curassow on Linux.
 
 #### Is there any example applications?
 
-Yes, check out the [Hello World example](https://github.com/kylef/Curasow-example-helloworld).
+Yes, check out the [Hello World example](https://github.com/kylef/Curassow-example-helloworld).
 
 #### How can I change the number of workers dynamically?
 
@@ -102,5 +102,5 @@ $ kill -TTOU $PID
 
 ## License
 
-Curasow is licensed under the BSD license. See [LICENSE](LICENSE) for more
+Curassow is licensed under the BSD license. See [LICENSE](LICENSE) for more
 info.

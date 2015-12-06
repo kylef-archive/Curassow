@@ -1,0 +1,3 @@
+[submodule "Spectre"]
+	path = Spectre
+	url = https://github.com/kylef/Spectre

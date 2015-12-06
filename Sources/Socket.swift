@@ -1,7 +1,7 @@
 #if os(Linux)
 import Glibc
 
-private let sock_stream = SOCK_STREAM.rawValue
+private let sock_stream = Int32(SOCK_STREAM.rawValue)
 
 private let system_accept = Glibc.accept
 private let system_bind = Glibc.bind
@@ -54,7 +54,7 @@ class Socket {
 
   init() throws {
 #if os(Linux)
-    descriptor = socket(AF_INET, Int32(), 0)
+    descriptor = socket(AF_INET, sock_stream, 0)
 #else
     descriptor = socket(AF_INET, sock_stream, IPPROTO_TCP)
 #endif

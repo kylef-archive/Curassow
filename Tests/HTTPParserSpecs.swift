@@ -1,5 +1,5 @@
 import Spectre
-import Currasow
+import Curassow
 
 describe("HTTP Parser") {
   $0.it("works") {

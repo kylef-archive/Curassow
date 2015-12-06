@@ -36,15 +36,9 @@ enum Address : CustomStringConvertible {
   }
 }
 
-protocol SignalHandler {
-  func handleTTIN()
-  func handleTTOU()
-}
-
-var arbiter: SignalHandler!
 
 /// Arbiter maintains the worker processes
-class Arbiter<Worker : WorkerType> : SignalHandler {
+class Arbiter<Worker : WorkerType> {
   let logger = Logger()
   var listeners: [Socket] = []
   var workers: [pid_t: Worker] = [:]
@@ -67,21 +61,19 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
     }
   }
 
-  func registerSignals() throws {
-    arbiter = self
-
-    signal(SIGTTIN) { _ in
-      arbiter.handleTTIN()
-    }
-
-    signal(SIGTTOU) { _ in
-      arbiter.handleTTOU()
-    }
+  func registerSignals() {
+    let signals = SignalHandler()
+    signals.register(.Interrupt, handleINT)
+    signals.register(.Quit, handleQUIT)
+    signals.register(.TTIN, handleTTIN)
+    signals.register(.TTOU, handleTTOU)
+    sharedHandler = signals
+    SignalHandler.registerSignals()
   }
 
   // Main run loop for the master process
   func run() throws {
-    try registerSignals()
+    registerSignals()
     try createSockets()
 
     manageWorkers()
@@ -92,6 +84,23 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
     }
   }
 
+  func stop(graceful: Bool = true) {
+    listeners.forEach { $0.close() }
+
+    if graceful {
+      killWorkers(SIGTERM)
+    } else {
+      killWorkers(SIGQUIT)
+    }
+
+    halt()
+  }
+
+  func halt(exitStatus: Int32 = 0) {
+    logger.info("Shutting down")
+    exit(exitStatus)
+  }
+
   func sleep() {
     // Wait's for stuff happening on our signal
     // TODO make signals for worker<>arbiter communcation
@@ -99,6 +108,14 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
   }
 
   // MARK: Handle Signals
+
+  func handleINT() {
+    stop(false)
+  }
+
+  func handleQUIT() {
+    stop(false)
+  }
 
   /// Increases the amount of workers by one
   func handleTTIN() {
@@ -119,7 +136,7 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
   // Maintain number of workers by spawning or killing as required.
   func manageWorkers() {
     spawnWorkers()
-    killWorkers()
+    murderWorkers()
   }
 
   // Spawn workers until we have enough
@@ -132,8 +149,8 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
     }
   }
 
-  // Kill unused workers, oldest first
-  func killWorkers() {
+  // Murder unused workers, oldest first
+  func murderWorkers() {
     let killCount = workers.count - numberOfWorkers
     if killCount > 0 {
       for _ in 0..<killCount {
@@ -141,6 +158,13 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
           kill(pid, SIGKILL)
         }
       }
+    }
+  }
+
+  // Kill all workers with given signal
+  func killWorkers(signal: Int32) {
+    for pid in workers.keys {
+      kill(pid, signal)
     }
   }
 
@@ -154,6 +178,9 @@ class Arbiter<Worker : WorkerType> : SignalHandler {
       return
     }
 
+    let workerPid = getpid()
     worker.run()
+    logger.info("Worker exiting (pid: \(workerPid))")
+    exit(0)
   }
 }

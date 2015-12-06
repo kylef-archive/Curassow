@@ -27,9 +27,18 @@ final class SyncronousWorker : WorkerType {
     self.application = application
   }
 
+  func registerSignals() {
+    let signals = SignalHandler()
+    signals.register(.Interrupt, handleQuit)
+    signals.register(.Quit, handleQuit)
+    sharedHandler = signals
+    SignalHandler.registerSignals()
+  }
+
   func run() {
     logger.info("Booting worker process with pid: \(getpid())")
 
+    registerSignals()
     isAlive = true
 
     if listeners.count == 1 {
@@ -50,6 +59,13 @@ final class SyncronousWorker : WorkerType {
   func runMultiple(listeners: [Socket]) {
     // TODO multiple listners
     fatalError("Curassow Syncronous worker cannot yet handle multiple listeners")
+  }
+
+  // MARK: Signal Handling
+
+  func handleQuit() {
+    isAlive = false
+    exit(0) // FIXME once socket is non-blocking, remove and fallthough to run
   }
 
   func notify() {

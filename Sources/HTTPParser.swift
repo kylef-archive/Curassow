@@ -65,6 +65,7 @@ class HTTPParser {
     let (top, _) = try readUntil()
     var components = top.split("\r\n")
     let requestLine = components.removeFirst()
+    components.removeLast()
     let requestComponents = requestLine.split(" ")
     if requestComponents.count != 3 {
       throw HTTPParserError.BadSyntax(requestLine)
@@ -79,7 +80,18 @@ class HTTPParser {
       throw HTTPParserError.BadVersion(version)
     }
 
-    return Request(method: method, path: path)
+    let headers = parseHeaders(components)
+    return Request(method: method, path: path, headers: headers)
+  }
+
+  func parseHeaders(headers: [String]) -> [Header] {
+    return headers.map { $0.split(":", maxSeparator: 1) }.flatMap {
+      if $0.count == 2 {
+        return ($0[0], $0[1])
+      }
+
+      return nil
+    }
   }
 }
 
@@ -113,12 +125,14 @@ extension CollectionType where Generator.Element == CChar {
 
 
 extension String {
-  func split(separator: String) -> [String] {
+  func split(separator: String, maxSeparator: Int = Int.max) -> [String] {
     let scanner = Scanner(self)
     var components: [String] = []
+    var scans = 0
 
-    while !scanner.isEmpty {
+    while !scanner.isEmpty && scans <= maxSeparator {
       components.append(scanner.scan(until: separator))
+      ++scans
     }
 
     return components

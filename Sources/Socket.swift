@@ -10,8 +10,6 @@ private let system_listen = Glibc.listen
 private let system_read = Glibc.read
 private let system_send = Glibc.send
 private let system_shutdown = Glibc.shutdown
-private let system_select = Glibc.select
-private let system_pipe = Glibc.pipe
 #else
 import Darwin.C
 
@@ -24,13 +22,7 @@ private let system_listen = Darwin.listen
 private let system_read = Darwin.read
 private let system_send = Darwin.send
 private let system_shutdown = Darwin.shutdown
-private let system_select = Darwin.select
-private let system_pipe = Darwin.pipe
 #endif
-
-
-@_silgen_name("fcntl") private func fcntl(descriptor: Int32, _ command: Int32, _ flags: Int32) -> Int32
-
 
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
@@ -53,14 +45,6 @@ class Socket {
   typealias Port = UInt16
 
   let descriptor: Descriptor
-
-  class func pipe() throws -> [Socket] {
-    var fds: [Int32] = [0, 0]
-    if system_pipe(&fds) == -1 {
-      throw SocketError()
-    }
-    return [Socket(descriptor: fds[0]), Socket(descriptor: fds[1])]
-  }
 
   init() throws {
 #if os(Linux)
@@ -124,53 +108,7 @@ class Socket {
   func read(bytes: Int) throws -> [CChar] {
     let data = Data(capacity: bytes)
     let bytes = system_read(descriptor, data.bytes, data.capacity)
-    if bytes > 0 {
-      return Array(data.characters[0..<bytes])
-    }
-
-    return []
-  }
-
-  /// Returns whether the socket is set to non-blocking or blocking
-  var blocking: Bool {
-    get {
-      let flags = fcntl(descriptor, F_GETFL, 0)
-      return flags & O_NONBLOCK == 1
-    }
-
-    set {
-      let flags = fcntl(descriptor, F_GETFL, 0)
-      let newFlags: Int32
-
-      if newValue {
-        newFlags = flags ^ O_NONBLOCK
-      } else {
-        newFlags = flags | O_NONBLOCK
-      }
-
-      fcntl(descriptor, F_SETFL, newFlags)
-    }
-  }
-
-  /// Returns whether the socket is has the FD_CLOEXEC flag set
-  var closeOnExec: Bool {
-    get {
-      let flags = fcntl(descriptor, F_GETFL, 0)
-      return flags & FD_CLOEXEC == 1
-    }
-
-    set {
-      let flags = fcntl(descriptor, F_GETFL, 0)
-      let newFlags: Int32
-
-      if newValue {
-        newFlags = flags ^ FD_CLOEXEC
-      } else {
-        newFlags = flags | FD_CLOEXEC
-      }
-
-      fcntl(descriptor, F_SETFL, newFlags)
-    }
+    return Array(data.characters[0..<bytes])
   }
 
   private func htons(value: CUnsignedShort) -> CUnsignedShort {
@@ -180,44 +118,4 @@ class Socket {
   private func sockaddr_cast(p: UnsafeMutablePointer<Void>) -> UnsafeMutablePointer<sockaddr> {
     return UnsafeMutablePointer<sockaddr>(p)
   }
-}
-
-
-func filter(sockets: [Socket], inout _ set: fd_set) -> [Socket] {
-  return sockets.filter {
-    fdIsSet($0.descriptor, &set)
-  }
-}
-
-
-func select(reads: [Socket], _ writes: [Socket], _ errors: [Socket], timeout: timeval) -> ([Socket], [Socket], [Socket]) {
-  var timeout = timeout
-
-  var readFDs = fd_set()
-  fdZero(&readFDs)
-  reads.forEach { fdSet($0.descriptor, &readFDs) }
-
-  var writeFDs = fd_set()
-  fdZero(&writeFDs)
-  writes.forEach { fdSet($0.descriptor, &writeFDs) }
-
-  var errorFDs = fd_set()
-  fdZero(&errorFDs)
-  errors.forEach { fdSet($0.descriptor, &errorFDs) }
-
-  let maxFD = (reads + writes + errors).map { $0.descriptor }.reduce(0, combine: max)
-  let result = system_select(maxFD + 1, &readFDs, &writeFDs, &errorFDs, &timeout)
-
-  if result == 0 {
-    return ([], [], [])
-  } else if result > 0 {
-    return (
-      filter(reads, &readFDs),
-      filter(writes, &writeFDs),
-      filter(errors, &errorFDs)
-    )
-  }
-
-  // error
-  return ([], [], [])
 }

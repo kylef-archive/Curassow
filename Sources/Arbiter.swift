@@ -110,14 +110,10 @@ class Arbiter<Worker : WorkerType> {
   func sleep() {
     let timeout = timeval(tv_sec: 10, tv_usec: 0)
     let (read, _, _) = select([signalHandler.pipe[0]], [], [], timeout: timeout)
-    print("stop sleep")
 
     if !read.isEmpty {
-      print("read was empty")
       do {
-        while try signalHandler.pipe[0].read(1).count > 0 {
-          print("READING")
-        }
+        while try signalHandler.pipe[0].read(1).count > 0 {}
       } catch {}
     }
   }

@@ -42,8 +42,8 @@ example: curassow-release example.swift
 	@$(SWIFTC) -o example \
 		example.swift \
 		-I.build/release \
-		-Xlinker .build/release/Commander.a \
 		-Xlinker .build/release/Curassow.a \
+		-Xlinker .build/release/Commander.a \
 		-Xlinker .build/release/Inquiline.a \
 		-Xlinker .build/release/Nest.a \
 

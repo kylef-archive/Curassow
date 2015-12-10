@@ -24,6 +24,6 @@ class Data {
   }
 
   var string: String? {
-    return String.fromCString(characters)
+    return String.fromCString(bytes)
   }
 }

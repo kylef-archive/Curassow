@@ -33,8 +33,12 @@ run-tests: curassow test-dependencies $(SPEC_FILES)
 test: run-tests
 	./run-tests
 
-example:
+curassow-release:
+	@echo "Building Curassow"
 	@swift build --configuration release
+
+example: curassow-release example.swift
+	@echo "Building Example"
 	@$(SWIFTC) -o example \
 		example.swift \
 		-I.build/release \

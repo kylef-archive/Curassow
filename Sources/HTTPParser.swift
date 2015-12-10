@@ -40,7 +40,7 @@ class HTTPParser {
     while true {
       if let bytes = try? socket.read(512) {
         if bytes.isEmpty {
-          continue
+          throw HTTPParserError.Internal
         }
 
         buffer += bytes

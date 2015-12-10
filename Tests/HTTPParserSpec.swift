@@ -27,8 +27,8 @@ describe("HTTPParser") {
   }
 
   $0.after {
-    inSocket.close()
-    outSocket.close()
+    inSocket?.close()
+    outSocket?.close()
   }
 
   $0.it("can parse a HTTP request body") {
@@ -42,5 +42,22 @@ describe("HTTPParser") {
     let header = request.headers[0]
     try expect(header.0) == "Host"
     try expect(header.1) == "localhost"
+  }
+
+  $0.it("throws an error when the client uses bad HTTP syntax") {
+    outSocket.write("GET /\r\nHost: localhost\r\n\r\n")
+    try expect(try parser.parse()).toThrow()
+  }
+
+  $0.it("throws an error when the client uses a bad HTTP version") {
+    outSocket.write("GET / HTTP/5.0\r\nHost: localhost\r\n\r\n")
+    try expect(try parser.parse()).toThrow()
+  }
+
+  $0.it("throws an error when the client disconnects before sending an HTTP request") {
+    outSocket.close()
+    outSocket = nil
+
+    try expect(try parser.parse()).toThrow()
   }
 }

@@ -1,2 +1,3 @@
-/.build/
-/Packages/
+.build/
+Packages/
+run-tests

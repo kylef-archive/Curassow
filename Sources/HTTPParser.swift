@@ -47,7 +47,7 @@ class HTTPParser {
 
         let crln: [CChar] = [13, 10, 13, 10]
         if let (top, bottom) = buffer.find(crln) {
-          if let headers = String.fromCString(top) {
+          if let headers = String.fromCString(top + [0]) {
             return (headers, bottom)
           }
 
@@ -87,6 +87,10 @@ class HTTPParser {
   func parseHeaders(headers: [String]) -> [Header] {
     return headers.map { $0.split(":", maxSeparator: 1) }.flatMap {
       if $0.count == 2 {
+        if $0[1].characters.first == " " {
+          let value = String($0[1].characters[$0[1].startIndex.successor()..<$0[1].endIndex])
+          return ($0[0], value)
+        }
         return ($0[0], $0[1])
       }
 

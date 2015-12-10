@@ -9,6 +9,7 @@ private let system_close = Glibc.close
 private let system_listen = Glibc.listen
 private let system_read = Glibc.read
 private let system_send = Glibc.send
+private let system_write = Glibc.write
 private let system_shutdown = Glibc.shutdown
 #else
 import Darwin.C
@@ -21,6 +22,7 @@ private let system_close = Darwin.close
 private let system_listen = Darwin.listen
 private let system_read = Darwin.read
 private let system_send = Darwin.send
+private let system_write = Darwin.write
 private let system_shutdown = Darwin.shutdown
 #endif
 
@@ -102,6 +104,12 @@ class Socket {
   func send(output: String) {
     output.withCString { bytes in
       system_send(descriptor, bytes, Int(strlen(bytes)), 0)
+    }
+  }
+
+  func write(output: String) {
+    output.withCString { bytes in
+      system_write(descriptor, bytes, Int(strlen(bytes)))
     }
   }
 

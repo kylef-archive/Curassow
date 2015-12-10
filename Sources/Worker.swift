@@ -27,10 +27,11 @@ final class SyncronousWorker : WorkerType {
     self.application = application
   }
 
-  func registerSignals() {
-    let signals = SignalHandler()
+  func registerSignals() throws {
+    let signals = try SignalHandler()
     signals.register(.Interrupt, handleQuit)
     signals.register(.Quit, handleQuit)
+    signals.register(.Terminate, handleTerminate)
     sharedHandler = signals
     SignalHandler.registerSignals()
   }
@@ -38,8 +39,15 @@ final class SyncronousWorker : WorkerType {
   func run() {
     logger.info("Booting worker process with pid: \(getpid())")
 
-    registerSignals()
+    do {
+      try registerSignals()
+    } catch {
+      logger.info("Failed to boot \(error)")
+      return
+    }
     isAlive = true
+
+    listeners.forEach { $0.blocking = false }
 
     if listeners.count == 1 {
       runOne(listeners.first!)
@@ -65,7 +73,10 @@ final class SyncronousWorker : WorkerType {
 
   func handleQuit() {
     isAlive = false
-    exit(0) // FIXME once socket is non-blocking, remove and fallthough to run
+  }
+
+  func handleTerminate() {
+    isAlive = false
   }
 
   func notify() {
@@ -73,12 +84,14 @@ final class SyncronousWorker : WorkerType {
   }
 
   func wait() -> [Socket] {
-    return []
+    let timeout = timeval(tv_sec: 10, tv_usec: 0)
+    let (read, _, _) = select(listeners, [], [], timeout: timeout)
+    return read
   }
 
   func accept(listener: Socket) {
     if let client = try? listener.accept() {
-      // TODO: Set socket non blocking
+      client.blocking = true
       handle(client)
     }
   }

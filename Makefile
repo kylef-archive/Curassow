@@ -32,3 +32,17 @@ run-tests: curassow test-dependencies $(SPEC_FILES)
 
 test: run-tests
 	./run-tests
+
+example:
+	@swift build --configuration release
+	@$(SWIFTC) -o example \
+		example.swift \
+		-I.build/release \
+		-Xlinker .build/release/Commander.a \
+		-Xlinker .build/release/Curassow.a \
+		-Xlinker .build/release/Inquiline.a \
+		-Xlinker .build/release/Nest.a \
+
+
+clean:
+	rm -fr run-tests example .build Tests/Packages/.build

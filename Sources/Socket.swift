@@ -60,6 +60,12 @@ class Socket {
     guard setsockopt(descriptor, SOL_SOCKET, SO_REUSEADDR, &value, socklen_t(sizeof(Int32))) != -1 else {
       throw SocketError(function: "setsockopt()")
     }
+
+#if !os(Linux)
+    guard setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &value, socklen_t(sizeof(Int32))) != -1 else {
+        throw SocketError(function: "setsockopt()")
+    }
+#endif
   }
 
   init(descriptor: Descriptor) {
@@ -103,7 +109,12 @@ class Socket {
 
   func send(output: String) {
     output.withCString { bytes in
-      system_send(descriptor, bytes, Int(strlen(bytes)), 0)
+#if os(Linux)
+    let flags = Int32(MSG_NOSIGNAL)
+#else
+    let flags = Int32(0)
+#endif
+      system_send(descriptor, bytes, Int(strlen(bytes)), flags)
     }
   }
 

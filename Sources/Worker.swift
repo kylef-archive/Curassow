@@ -104,36 +104,37 @@ final class SyncronousWorker : WorkerType {
     client.shutdown()
     client.close()
   }
+}
 
-  func sendResponse(client: Socket, response: ResponseType) {
-    client.send("HTTP/1.1 \(response.statusLine)\r\n")
 
-    client.send("Connection: close\r\n")
-    var hasLength = false
+func sendResponse(client: Socket, response: ResponseType) {
+  client.send("HTTP/1.1 \(response.statusLine)\r\n")
 
-    for (key, value) in response.headers {
-      if key != "Connection" {
-        client.send("\(key): \(value)\r\n")
-      }
+  client.send("Connection: close\r\n")
+  var hasLength = false
 
-      if key == "Content-Length" {
-        hasLength = true
-      }
+  for (key, value) in response.headers {
+    if key != "Connection" {
+      client.send("\(key): \(value)\r\n")
     }
 
-    if !hasLength {
+    if key == "Content-Length" {
+      hasLength = true
+    }
+  }
+
+  if !hasLength {
       if let body = response.body {
-        // TODO body shouldn't be a string
-        client.send("Content-Length: \(body.characters.count)\r\n")
-      } else {
-        client.send("Content-Length: 0\r\n")
-      }
+      // TODO body shouldn't be a string
+      client.send("Content-Length: \(body.characters.count)\r\n")
+    } else {
+      client.send("Content-Length: 0\r\n")
     }
+  }
 
-    client.send("\r\n")
+  client.send("\r\n")
 
-    if let body = response.body {
-      client.send(body)
-    }
+  if let body = response.body {
+    client.send(body)
   }
 }

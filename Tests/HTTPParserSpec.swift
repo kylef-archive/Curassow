@@ -9,6 +9,8 @@ import Nest
 @testable import Curassow
 
 
+func describeHTTPParser() {
+
 describe("HTTPParser") {
   var parser: HTTPParser!
   var inSocket: Socket!
@@ -60,4 +62,6 @@ describe("HTTPParser") {
 
     try expect(try parser.parse()).toThrow()
   }
+}
+
 }

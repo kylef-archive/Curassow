@@ -18,9 +18,10 @@ test-dependencies:
 	@echo "Building Test Dependencies"
 	@cd Tests/Packages && swift build
 
-run-tests: curassow test-dependencies $(SPEC_FILES)
+run-tests: curassow test-dependencies Tests/main.swift $(SPEC_FILES)
 	@echo "Building specs"
 	@$(SWIFTC) -o run-tests \
+		Tests/main.swift \
 		$(SPEC_FILES) \
 		-I.build/debug \
 		-ITests/Packages/.build/debug \

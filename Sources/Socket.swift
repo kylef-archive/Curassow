@@ -116,6 +116,9 @@ class Socket {
   func read(bytes: Int) throws -> [CChar] {
     let data = Data(capacity: bytes)
     let bytes = system_read(descriptor, data.bytes, data.capacity)
+    guard bytes != -1 else {
+        throw SocketError()
+    }
     return Array(data.characters[0..<bytes])
   }
 

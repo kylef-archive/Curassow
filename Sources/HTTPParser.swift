@@ -60,9 +60,24 @@ class HTTPParser {
     }
   }
 
+  func readBody(maxLength maxLength: Int? = nil) throws -> [CChar] {
+    let length = maxLength ?? Int.max
+    var buffer: [CChar] = []
+
+    while buffer.count < length {
+      let bytes = try socket.read(min(512, length-buffer.count))
+      if bytes.isEmpty {
+        break
+      }
+
+      buffer += bytes
+    }
+
+    return buffer
+  }
+
   func parse() throws -> RequestType {
-    // TODO body
-    let (top, _) = try readUntil()
+    let (top, startOfBody) = try readUntil()
     var components = top.split("\r\n")
     let requestLine = components.removeFirst()
     components.removeLast()
@@ -80,8 +95,13 @@ class HTTPParser {
       throw HTTPParserError.BadVersion(version)
     }
 
-    let headers = parseHeaders(components)
-    return Request(method: method, path: path, headers: headers)
+    var request = Request(method: method, path: path, headers: parseHeaders(components))
+    let contentLength = request.contentLength
+    let remainingContentLength = contentLength.map({ $0-startOfBody.count })
+    let bodyBytes = startOfBody + (try readBody(maxLength: remainingContentLength))
+    request.body = parseBody(bodyBytes, contentLength: contentLength)
+
+    return request
   }
 
   func parseHeaders(headers: [String]) -> [Header] {
@@ -96,6 +116,13 @@ class HTTPParser {
 
       return nil
     }
+  }
+
+  func parseBody(bytes: [CChar], contentLength: Int?) -> String? {
+    let length = contentLength ?? Int.max
+    let trimmedBytes = length<bytes.count ? Array(bytes[0..<length]) : bytes
+
+    return bytes.count > 0 ? String.fromCString(trimmedBytes+[0]) : nil
   }
 }
 

@@ -35,40 +35,18 @@ class HTTPParser {
     self.socket = socket
   }
 
-  // Read the socket until we find \r\n\r\n
-  // returning string before and chars after
-  func readUntil() throws -> (String, [CChar]) {
+  // Repeatedly read the socket, calling the predicate with the accumulated
+  // buffer to determine how many bytes to attempt to read next.
+  // Stops reading and returns the buffer when the predicate returns 0.
+  func readWhile(predicate: [CChar] -> Int) throws -> [CChar] {
     var buffer: [CChar] = []
 
     while true {
-      let bytes = try socket.read(512)
-      if bytes.isEmpty {
-        throw HTTPParserError.Incomplete
-      }
+      let nextSize = predicate(buffer)
+      guard nextSize > 0 else { break }
 
-      buffer += bytes
-
-      let crln: [CChar] = [13, 10, 13, 10]
-      if let (top, bottom) = buffer.find(crln) {
-        if let headers = String.fromCString(top + [0]) {
-          return (headers, bottom)
-        }
-
-        print("[worker] Failed to decode data from client")
-        throw HTTPParserError.Internal
-      }
-    }
-  }
-
-  func readBody(maxLength maxLength: Int? = nil) throws -> [CChar] {
-    let length = maxLength ?? Int.max
-    var buffer: [CChar] = []
-
-    while buffer.count < length {
-      let bytes = try socket.read(min(512, length-buffer.count))
-      if bytes.isEmpty {
-        break
-      }
+      let bytes = try socket.read(nextSize)
+      guard !bytes.isEmpty else { break }
 
       buffer += bytes
     }
@@ -76,8 +54,37 @@ class HTTPParser {
     return buffer
   }
 
+  // Read the socket until we find \r\n\r\n
+  // returning string before and chars after
+  func readHeaders() throws -> (String, [CChar]) {
+    var findResult: (top: [CChar], bottom: [CChar])?
+
+    let crln: [CChar] = [13, 10, 13, 10]
+    try readWhile({ bytes in
+      if let (top, bottom) = bytes.find(crln) {
+        findResult = (top, bottom)
+        return 0
+      } else {
+        return 512
+      }
+    })
+
+    guard let result = findResult else { throw HTTPParserError.Incomplete }
+
+    guard let headers = String.fromCString(result.top + [0]) else {
+      print("[worker] Failed to decode data from client")
+        throw HTTPParserError.Internal
+    }
+
+    return (headers, result.bottom)
+  }
+
+  func readBody(maxLength maxLength: Int) throws -> [CChar] {
+    return try readWhile({ bytes in min(maxLength-bytes.count, 512) })
+  }
+
   func parse() throws -> RequestType {
-    let (top, startOfBody) = try readUntil()
+    let (top, startOfBody) = try readHeaders()
     var components = top.split("\r\n")
     let requestLine = components.removeFirst()
     components.removeLast()
@@ -96,10 +103,12 @@ class HTTPParser {
     }
 
     var request = Request(method: method, path: path, headers: parseHeaders(components))
-    let contentLength = request.contentLength
-    let remainingContentLength = contentLength.map({ $0-startOfBody.count })
-    let bodyBytes = startOfBody + (try readBody(maxLength: remainingContentLength))
-    request.body = parseBody(bodyBytes, contentLength: contentLength)
+
+    if let contentLength = request.contentLength {
+      let remainingContentLength = contentLength - startOfBody.count
+      let bodyBytes = startOfBody + (try readBody(maxLength: remainingContentLength))
+      request.body = parseBody(bodyBytes, contentLength: contentLength)
+    }
 
     return request
   }

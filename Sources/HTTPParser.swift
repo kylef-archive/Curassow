@@ -11,6 +11,7 @@ import Inquiline
 enum HTTPParserError : ErrorType {
   case BadSyntax(String)
   case BadVersion(String)
+  case Incomplete
   case Internal
 
   func response() -> ResponseType {
@@ -19,6 +20,8 @@ enum HTTPParserError : ErrorType {
       return Response(.BadRequest, contentType: "text/plain", body: "Bad Syntax (\(syntax))")
     case let .BadVersion(version):
       return Response(.BadRequest, contentType: "text/plain", body: "Bad Version (\(version))")
+    case .Incomplete:
+      return Response(.BadRequest, contentType: "text/plain", body: "Incomplete HTTP Request")
     case .Internal:
       return Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
     }
@@ -38,24 +41,21 @@ class HTTPParser {
     var buffer: [CChar] = []
 
     while true {
-      if let bytes = try? socket.read(512) {
-        if bytes.isEmpty {
-          throw HTTPParserError.Internal
+      let bytes = try socket.read(512)
+      if bytes.isEmpty {
+        throw HTTPParserError.Incomplete
+      }
+
+      buffer += bytes
+
+      let crln: [CChar] = [13, 10, 13, 10]
+      if let (top, bottom) = buffer.find(crln) {
+        if let headers = String.fromCString(top + [0]) {
+          return (headers, bottom)
         }
 
-        buffer += bytes
-
-        let crln: [CChar] = [13, 10, 13, 10]
-        if let (top, bottom) = buffer.find(crln) {
-          if let headers = String.fromCString(top + [0]) {
-            return (headers, bottom)
-          }
-
-          print("[worker] Failed to decode data from client")
-          throw HTTPParserError.Internal
-        }
-
-        // TODO bail if server never sends us \r\n\r\n
+        print("[worker] Failed to decode data from client")
+        throw HTTPParserError.Internal
       }
     }
   }

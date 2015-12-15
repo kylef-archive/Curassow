@@ -1,6 +1,6 @@
 # Curassow
 
-[![Build Status](https://travis-ci.org/kylef/Curassow.svg)](https://travis-ci.org/kylef/Curassow)
+[![Build Status](https://travis-ci.org/kylef/Curassow.svg?branch=master)](https://travis-ci.org/kylef/Curassow)
 
 Curassow is a Swift [Nest](https://github.com/nestproject/Nest)
 HTTP Server. It uses the pre-fork worker model and it's similar to Python's

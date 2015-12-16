@@ -69,6 +69,14 @@ describe("HTTPParser") {
 
     try expect(try parser.parse()).toThrow()
   }
+
+  $0.it("throws an error when the client disconnects before sending the entire message body") {
+    outSocket.write("GET / HTTP/1.1\r\nContent-Length: 42\r\n\r\nabcdefgh")
+    outSocket.close()
+    outSocket = nil
+
+    try expect(try parser.parse()).toThrow()
+  }
 }
 
 }

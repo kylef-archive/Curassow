@@ -107,7 +107,7 @@ class HTTPParser {
     if let contentLength = request.contentLength {
       let remainingContentLength = contentLength - startOfBody.count
       let bodyBytes = startOfBody + (try readBody(maxLength: remainingContentLength))
-      request.body = parseBody(bodyBytes, contentLength: contentLength)
+      request.body = try parseBody(bodyBytes, contentLength: contentLength)
     }
 
     return request
@@ -127,11 +127,16 @@ class HTTPParser {
     }
   }
 
-  func parseBody(bytes: [CChar], contentLength: Int?) -> String? {
-    let length = contentLength ?? Int.max
-    let trimmedBytes = length<bytes.count ? Array(bytes[0..<length]) : bytes
+  func parseBody(bytes: [CChar], contentLength: Int) throws -> String {
+    guard bytes.count >= contentLength else { throw HTTPParserError.Incomplete }
 
-    return bytes.count > 0 ? String.fromCString(trimmedBytes+[0]) : nil
+    let trimmedBytes = contentLength<bytes.count ? Array(bytes[0..<contentLength]) : bytes
+
+    guard let bodyString = String.fromCString(trimmedBytes + [0]) else {
+      print("[worker] Failed to decode message body from client")
+      throw HTTPParserError.Internal
+    }
+    return bodyString
   }
 }
 

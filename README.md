@@ -36,7 +36,7 @@ import Inquiline
 
 
 var app = Application()
-app.addRoute("/") { request in
+app.addRoute("/") { (request, route) in
     return Response(.Ok, contentType: "text/plain", body: "Hello World")
 }
 

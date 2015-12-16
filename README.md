@@ -94,7 +94,15 @@ $ kill -TTOU $PID
 
 #### Is it ready for production?
 
-Currently, if your code causes a crash, the worker dies and Curassow doesn't yet automatically detect this and spawn new workers, see ([#1](https://github.com/kylef/Curassow/issues/1)).
+Currently, if your code causes a crash, the worker dies and Curassow
+doesn't yet automatically detect this and spawn new workers,
+see ([#1](https://github.com/kylef/Curassow/issues/1)). Resolving this is on
+the roadmap, but it will depend on the next upcoming snapshot of Swift so it
+has been postponed.
+
+Please consult the [deployment guide](Deployment.md) before deploying Curassow
+to a production environment. It's important to run Curassow behind a HTTP
+proxy.
 
 ## License
 

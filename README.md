@@ -35,9 +35,12 @@ import Curassow
 import Inquiline
 
 
-serve { request in
-  return Response(.Ok, contentType: "text/plain", body: "Hello World")
+var app = Application()
+app.addRoute("/") { (request, route) in
+    return Response(.Ok, contentType: "text/plain", body: "Hello World")
 }
+
+app.start()
 ```
 
 ```shell

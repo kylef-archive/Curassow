@@ -1,12 +1,19 @@
 import Foundation
 
 struct Route {
-    private let url: NSURL
+    let url: NSURL
+    let methods: [String]?
+    
     private var urlParameterIndices: [Int] {
         let patternComponents = self.url.absoluteString.componentsSeparatedByString("/")
         return patternComponents.enumerate()
             .filter { $0.1.hasPrefix(":") }
             .map { $0.0 }
+    }
+    
+    init(path: String, methods: [String]) {
+        self.url = NSURL(string: path)!
+        self.methods = methods
     }
 }
 
@@ -16,15 +23,26 @@ extension Route: StringLiteralConvertible {
     
     init(unicodeScalarLiteral value: UnicodeScalarLiteralType) {
         self.url = NSURL(string: "\(value)")!
+        self.methods = nil
     }
     
     init(extendedGraphemeClusterLiteral value: ExtendedGraphemeClusterLiteralType) {
         self.url = NSURL(string: "\(value)")!
+        self.methods = nil
     }
     
     init(stringLiteral value: StringLiteralType) {
         self.url = NSURL(string: "\(value)")!
+        self.methods = nil
     }
+}
+
+extension Route: Hashable, Equatable {
+    var hashValue: Int { return self.url.hashValue }
+}
+
+func ==(lhs: Route, rhs: Route) -> Bool {
+    return lhs.url == rhs.url
 }
 
 func ~=(lhs: Route, rhs: NSURL) -> Bool {

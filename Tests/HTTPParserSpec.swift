@@ -46,6 +46,13 @@ describe("HTTPParser") {
     try expect(header.1) == "localhost"
   }
 
+  $0.it("reads the message body when Content-Length is present") {
+    outSocket.write("GET / HTTP/1.1\r\nContent-Length: 5\r\n\r\nabcdefgh")
+
+    let request = try parser.parse()
+    try expect(request.body) == "abcde"
+  }
+
   $0.it("throws an error when the client uses bad HTTP syntax") {
     outSocket.write("GET /\r\nHost: localhost\r\n\r\n")
     try expect(try parser.parse()).toThrow()
@@ -57,6 +64,14 @@ describe("HTTPParser") {
   }
 
   $0.it("throws an error when the client disconnects before sending an HTTP request") {
+    outSocket.close()
+    outSocket = nil
+
+    try expect(try parser.parse()).toThrow()
+  }
+
+  $0.it("throws an error when the client disconnects before sending the entire message body") {
+    outSocket.write("GET / HTTP/1.1\r\nContent-Length: 42\r\n\r\nabcdefgh")
     outSocket.close()
     outSocket = nil
 

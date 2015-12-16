@@ -11,6 +11,7 @@ import Inquiline
 enum HTTPParserError : ErrorType {
   case BadSyntax(String)
   case BadVersion(String)
+  case Incomplete
   case Internal
 
   func response() -> ResponseType {
@@ -19,6 +20,8 @@ enum HTTPParserError : ErrorType {
       return Response(.BadRequest, contentType: "text/plain", body: "Bad Syntax (\(syntax))")
     case let .BadVersion(version):
       return Response(.BadRequest, contentType: "text/plain", body: "Bad Version (\(version))")
+    case .Incomplete:
+      return Response(.BadRequest, contentType: "text/plain", body: "Incomplete HTTP Request")
     case .Internal:
       return Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
     }
@@ -32,37 +35,56 @@ class HTTPParser {
     self.socket = socket
   }
 
-  // Read the socket until we find \r\n\r\n
-  // returning string before and chars after
-  func readUntil() throws -> (String, [CChar]) {
+  // Repeatedly read the socket, calling the predicate with the accumulated
+  // buffer to determine how many bytes to attempt to read next.
+  // Stops reading and returns the buffer when the predicate returns 0.
+  func readWhile(predicate: [CChar] -> Int) throws -> [CChar] {
     var buffer: [CChar] = []
 
     while true {
-      if let bytes = try? socket.read(512) {
-        if bytes.isEmpty {
-          throw HTTPParserError.Internal
-        }
+      let nextSize = predicate(buffer)
+      guard nextSize > 0 else { break }
 
-        buffer += bytes
+      let bytes = try socket.read(nextSize)
+      guard !bytes.isEmpty else { break }
 
-        let crln: [CChar] = [13, 10, 13, 10]
-        if let (top, bottom) = buffer.find(crln) {
-          if let headers = String.fromCString(top + [0]) {
-            return (headers, bottom)
-          }
-
-          print("[worker] Failed to decode data from client")
-          throw HTTPParserError.Internal
-        }
-
-        // TODO bail if server never sends us \r\n\r\n
-      }
+      buffer += bytes
     }
+
+    return buffer
+  }
+
+  // Read the socket until we find \r\n\r\n
+  // returning string before and chars after
+  func readHeaders() throws -> (String, [CChar]) {
+    var findResult: (top: [CChar], bottom: [CChar])?
+
+    let crln: [CChar] = [13, 10, 13, 10]
+    try readWhile({ bytes in
+      if let (top, bottom) = bytes.find(crln) {
+        findResult = (top, bottom)
+        return 0
+      } else {
+        return 512
+      }
+    })
+
+    guard let result = findResult else { throw HTTPParserError.Incomplete }
+
+    guard let headers = String.fromCString(result.top + [0]) else {
+      print("[worker] Failed to decode data from client")
+        throw HTTPParserError.Internal
+    }
+
+    return (headers, result.bottom)
+  }
+
+  func readBody(maxLength maxLength: Int) throws -> [CChar] {
+    return try readWhile({ bytes in min(maxLength-bytes.count, 512) })
   }
 
   func parse() throws -> RequestType {
-    // TODO body
-    let (top, _) = try readUntil()
+    let (top, startOfBody) = try readHeaders()
     var components = top.split("\r\n")
     let requestLine = components.removeFirst()
     components.removeLast()
@@ -80,8 +102,15 @@ class HTTPParser {
       throw HTTPParserError.BadVersion(version)
     }
 
-    let headers = parseHeaders(components)
-    return Request(method: method, path: path, headers: headers)
+    var request = Request(method: method, path: path, headers: parseHeaders(components))
+
+    if let contentLength = request.contentLength {
+      let remainingContentLength = contentLength - startOfBody.count
+      let bodyBytes = startOfBody + (try readBody(maxLength: remainingContentLength))
+      request.body = try parseBody(bodyBytes, contentLength: contentLength)
+    }
+
+    return request
   }
 
   func parseHeaders(headers: [String]) -> [Header] {
@@ -96,6 +125,18 @@ class HTTPParser {
 
       return nil
     }
+  }
+
+  func parseBody(bytes: [CChar], contentLength: Int) throws -> String {
+    guard bytes.count >= contentLength else { throw HTTPParserError.Incomplete }
+
+    let trimmedBytes = contentLength<bytes.count ? Array(bytes[0..<contentLength]) : bytes
+
+    guard let bodyString = String.fromCString(trimmedBytes + [0]) else {
+      print("[worker] Failed to decode message body from client")
+      throw HTTPParserError.Internal
+    }
+    return bodyString
   }
 }
 

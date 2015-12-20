@@ -38,10 +38,10 @@ curassow-release:
 	@echo "Building Curassow"
 	@swift build --configuration release
 
-example: curassow-release example.swift
+example: curassow-release example/example.swift
 	@echo "Building Example"
-	@$(SWIFTC) -o example \
-		example.swift \
+	@$(SWIFTC) -o example/example \
+		example/example.swift \
 		-I.build/release \
 		-Xlinker .build/release/Curassow.a \
 		-Xlinker .build/release/Commander.a \

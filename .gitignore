@@ -1,4 +1,4 @@
 .build/
 Packages/
 run-tests
-example
+example/example

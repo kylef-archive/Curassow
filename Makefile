@@ -14,25 +14,20 @@ curassow:
 	@echo "Building Curassow"
 	@swift build
 
-test-dependencies:
-	@echo "Building Test Dependencies"
-	@cd Tests/Packages && swift build
-
-run-tests: curassow test-dependencies Tests/main.swift $(SPEC_FILES)
+run-tests: curassow Tests/main.swift $(SPEC_FILES)
 	@echo "Building specs"
 	@$(SWIFTC) -o run-tests \
 		Tests/main.swift \
 		$(SPEC_FILES) \
 		-I.build/debug \
-		-ITests/Packages/.build/debug \
-		-Xlinker Tests/Packages/.build/debug/Spectre.a \
+		-Xlinker .build/debug/Spectre.a \
 		-Xlinker .build/debug/Commander.a \
 		-Xlinker .build/debug/Curassow.a \
 		-Xlinker .build/debug/Inquiline.a \
 		-Xlinker .build/debug/Nest.a \
 
 test: run-tests
-	./run-tests
+	@./run-tests
 
 curassow-release:
 	@echo "Building Curassow"
@@ -48,6 +43,5 @@ example: curassow-release example/example.swift
 		-Xlinker .build/release/Inquiline.a \
 		-Xlinker .build/release/Nest.a \
 
-
 clean:
-	rm -fr run-tests example .build Tests/Packages/.build
+	rm -fr run-tests example .build

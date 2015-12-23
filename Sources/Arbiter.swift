@@ -1,13 +1,8 @@
 #if os(Linux)
 import Glibc
-
 private let system_fork = Glibc.fork
-private let system_sleep = Glibc.sleep
 #else
 import Darwin.C
-
-private let system_sleep = Darwin.sleep
-
 @_silgen_name("fork") private func system_fork() -> Int32
 #endif
 
@@ -48,6 +43,8 @@ class Arbiter<Worker : WorkerType> {
 
   let application: RequestType -> ResponseType
 
+  var signalHandler: SignalHandler!
+
   init(application: RequestType -> ResponseType, workers: Int, addresses: [Address]) {
     self.application = application
     self.numberOfWorkers = workers
@@ -61,27 +58,34 @@ class Arbiter<Worker : WorkerType> {
     }
   }
 
-  func registerSignals() {
-    let signals = SignalHandler()
-    signals.register(.Interrupt, handleINT)
-    signals.register(.Quit, handleQUIT)
-    signals.register(.TTIN, handleTTIN)
-    signals.register(.TTOU, handleTTOU)
-    sharedHandler = signals
+  func registerSignals() throws {
+    signalHandler = try SignalHandler()
+    signalHandler.register(.Interrupt, handleINT)
+    signalHandler.register(.Quit, handleQUIT)
+    signalHandler.register(.Terminate, handleTerminate)
+    signalHandler.register(.TTIN, handleTTIN)
+    signalHandler.register(.TTOU, handleTTOU)
+    sharedHandler = signalHandler
     SignalHandler.registerSignals()
   }
 
+  var running = false
+
   // Main run loop for the master process
   func run() throws {
-    registerSignals()
+    running = true
+
+    try registerSignals()
     try createSockets()
 
     manageWorkers()
 
-    while true {
+    while running {
       sleep()
       manageWorkers()
     }
+
+    halt()
   }
 
   func stop(graceful: Bool = true) {
@@ -93,18 +97,25 @@ class Arbiter<Worker : WorkerType> {
       killWorkers(SIGQUIT)
     }
 
-    halt()
+    running = false
   }
 
   func halt(exitStatus: Int32 = 0) {
+    stop()
     logger.info("Shutting down")
     exit(exitStatus)
   }
 
+  /// Sleep, waiting for stuff to happen on our signal pipe
   func sleep() {
-    // Wait's for stuff happening on our signal
-    // TODO make signals for worker<>arbiter communcation
-    system_sleep(10) // Until method is implemented, don't use CPU too much
+    let timeout = timeval(tv_sec: 10, tv_usec: 0)
+    let (read, _, _) = select([signalHandler.pipe[0]], [], [], timeout: timeout)
+
+    if !read.isEmpty {
+      do {
+        while try signalHandler.pipe[0].read(1).count > 0 {}
+      } catch {}
+    }
   }
 
   // MARK: Handle Signals
@@ -115,6 +126,10 @@ class Arbiter<Worker : WorkerType> {
 
   func handleQUIT() {
     stop(false)
+  }
+
+  func handleTerminate() {
+    running = false
   }
 
   /// Increases the amount of workers by one

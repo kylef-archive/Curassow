@@ -177,7 +177,7 @@ extension String {
 
     while !scanner.isEmpty && scans <= maxSeparator {
       components.append(scanner.scan(until: separator))
-      ++scans
+      scans += 1
     }
 
     return components

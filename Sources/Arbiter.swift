@@ -134,14 +134,14 @@ class Arbiter<Worker : WorkerType> {
 
   /// Increases the amount of workers by one
   func handleTTIN() {
-    ++numberOfWorkers
+    numberOfWorkers += 1
     manageWorkers()
   }
 
   /// Decreases the amount of workers by one
   func handleTTOU() {
     if numberOfWorkers > 1 {
-      --numberOfWorkers
+      numberOfWorkers -= 1
       manageWorkers()
     }
   }

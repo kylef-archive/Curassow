@@ -231,7 +231,7 @@ extension String {
       return false
     }
 
-    for var idx = 0; idx < prefixCharacters.count; idx++ {
+    for idx in 0..<prefixCharacters.count {
       if characters[start.advancedBy(idx)] != prefixCharacters[prefixStart.advancedBy(idx)] {
         return false
       }

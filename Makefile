@@ -44,4 +44,4 @@ example: curassow-release example/example.swift
 		-Xlinker .build/release/Nest.a \
 
 clean:
-	rm -fr run-tests example .build
+	rm -fr run-tests example/example .build

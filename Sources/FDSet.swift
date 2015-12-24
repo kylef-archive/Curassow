@@ -67,7 +67,29 @@ func fdSet(descriptor: Int32, inout _ set: fd_set) {
 
 func fdIsSet(descriptor: Int32, inout _ set: fd_set) -> Bool {
 #if os(Linux)
-  return true // TODO figure out this for Linux
+  let intOffset = Int(descriptor / 32)
+  let bitOffset = Int(descriptor % 32)
+  let mask = Int(1 << bitOffset)
+
+  switch intOffset {
+    case 0: return set.__fds_bits.0 & mask != 0
+    case 1: return set.__fds_bits.1 & mask != 0
+    case 2: return set.__fds_bits.2 & mask != 0
+    case 3: return set.__fds_bits.3 & mask != 0
+    case 4: return set.__fds_bits.4 & mask != 0
+    case 5: return set.__fds_bits.5 & mask != 0
+    case 6: return set.__fds_bits.6 & mask != 0
+    case 7: return set.__fds_bits.7 & mask != 0
+    case 8: return set.__fds_bits.8 & mask != 0
+    case 9: return set.__fds_bits.9 & mask != 0
+    case 10: return set.__fds_bits.10 & mask != 0
+    case 11: return set.__fds_bits.11 & mask != 0
+    case 12: return set.__fds_bits.12 & mask != 0
+    case 13: return set.__fds_bits.13 & mask != 0
+    case 14: return set.__fds_bits.14 & mask != 0
+    case 15: return set.__fds_bits.15 & mask != 0
+    default: return false
+  }
 #else
   let intOffset = Int32(descriptor / 32)
   let bitOffset = Int32(descriptor % 32)

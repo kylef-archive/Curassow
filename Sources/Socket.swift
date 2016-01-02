@@ -150,7 +150,7 @@ class Socket {
   var blocking: Bool {
     get {
       let flags = fcntl(descriptor, F_GETFL, 0)
-      return flags & O_NONBLOCK == 1
+      return flags & O_NONBLOCK == 0
     }
 
     set {
@@ -158,7 +158,7 @@ class Socket {
       let newFlags: Int32
 
       if newValue {
-        newFlags = flags ^ O_NONBLOCK
+        newFlags = flags & ~O_NONBLOCK
       } else {
         newFlags = flags | O_NONBLOCK
       }

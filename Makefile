@@ -26,8 +26,32 @@ run-tests: curassow Tests/main.swift $(SPEC_FILES)
 		-Xlinker .build/debug/Inquiline.a \
 		-Xlinker .build/debug/Nest.a \
 
-test: run-tests
+run-integration-tests: curassow
+	@echo "Building Nest Test Suite"
+	@cd Tests/Integration/NestTestSuite && swift build
+	@echo "Building Curassow Nest Test Suite Server"
+	@$(SWIFTC) -o run-integration-tests \
+		Tests/Integration/main.swift \
+		Tests/Integration/NestTestSuite/Server/application.swift \
+		-I.build/debug \
+		-Xlinker .build/debug/Commander.a \
+		-Xlinker .build/debug/Curassow.a \
+		-Xlinker .build/debug/Inquiline.a \
+		-Xlinker .build/debug/Nest.a \
+
+unit-test: run-tests
 	@./run-tests
+
+integration-test: run-integration-tests
+	@pkill run-integration-tests || true
+	@echo "Starting Server"
+	@./run-integration-tests --bind 127.0.0.1:9393 &
+	@sleep 1
+	@echo "Starting Test Suite"
+	@Tests/Integration/NestTestSuite/.build/debug/NestTestSuite --host http://127.0.0.1:9393 Tests/Integration/NestTestSuite/Features/*.feature
+	@pkill run-integration-tests || true
+
+test: unit-test integration-test
 
 curassow-release:
 	@echo "Building Curassow"

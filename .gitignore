@@ -1,4 +1,5 @@
 .build/
 Packages/
 run-tests
+run-integration-tests
 example/example

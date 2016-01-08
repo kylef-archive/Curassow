@@ -37,6 +37,7 @@ class Arbiter<Worker : WorkerType> {
   let logger = Logger()
   var listeners: [Socket] = []
   var workers: [pid_t: Worker] = [:]
+  let timeout: Int = 30
 
   var numberOfWorkers: Int
   let addresses: [Address]
@@ -65,6 +66,7 @@ class Arbiter<Worker : WorkerType> {
     signalHandler.register(.Terminate, handleTerminate)
     signalHandler.register(.TTIN, handleTTIN)
     signalHandler.register(.TTOU, handleTTOU)
+    signalHandler.register(.Child, handleChild)
     sharedHandler = signalHandler
     SignalHandler.registerSignals()
   }
@@ -81,9 +83,11 @@ class Arbiter<Worker : WorkerType> {
     manageWorkers()
 
     while running {
-      signalHandler.process()
-      sleep()
-      manageWorkers()
+      if !signalHandler.process() {
+        sleep()
+        murderWorkers()
+        manageWorkers()
+      }
     }
 
     halt()
@@ -109,7 +113,7 @@ class Arbiter<Worker : WorkerType> {
 
   /// Sleep, waiting for stuff to happen on our signal pipe
   func sleep() {
-    let timeout = timeval(tv_sec: 10, tv_usec: 0)
+    let timeout = timeval(tv_sec: self.timeout, tv_usec: 0)
     let (read, _, _) = select([signalHandler.pipe[0]], [], [], timeout: timeout)
 
     if !read.isEmpty {
@@ -147,12 +151,26 @@ class Arbiter<Worker : WorkerType> {
     }
   }
 
+  func handleChild() {
+    while true {
+      var stat: Int32 = 0
+      let pid = waitpid(-1, &stat, WNOHANG)
+      if pid == -1 {
+        break
+      }
+
+      workers.removeValueForKey(pid)
+    }
+
+    manageWorkers()
+  }
+
   // MARK: Worker
 
   // Maintain number of workers by spawning or killing as required.
   func manageWorkers() {
     spawnWorkers()
-    murderWorkers()
+    murderExcessWorkers()
   }
 
   // Spawn workers until we have enough
@@ -165,8 +183,35 @@ class Arbiter<Worker : WorkerType> {
     }
   }
 
-  // Murder unused workers, oldest first
+  // Murder workers that have timed out
   func murderWorkers() {
+    var currentTime = timeval()
+    gettimeofday(&currentTime, nil)
+
+    for (pid, worker) in workers {
+      let lastUpdate = currentTime.tv_sec - worker.temp.lastUpdate.tv_sec
+
+      if lastUpdate >= timeout {
+        if worker.aborted {
+          if kill(pid, SIGKILL) == ESRCH {
+            workers.removeValueForKey(pid)
+          }
+        } else {
+          var worker = worker
+          worker.aborted = true
+
+          logger.critical("Worker timeout (pid: \(pid))")
+
+          if kill(pid, SIGABRT) == ESRCH {
+            workers.removeValueForKey(pid)
+          }
+        }
+      }
+    }
+  }
+
+  // Murder unused workers, oldest first
+  func murderExcessWorkers() {
     let killCount = workers.count - numberOfWorkers
     if killCount > 0 {
       for _ in 0..<killCount {
@@ -186,7 +231,7 @@ class Arbiter<Worker : WorkerType> {
 
   // Spawns a new worker process
   func spawnWorker() {
-    let worker = Worker(logger: logger, listeners: listeners, application: application)
+    let worker = Worker(logger: logger, listeners: listeners, timeout: timeout / 2, application: application)
 
     let pid = system_fork()
     if pid != 0 {

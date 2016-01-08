@@ -24,6 +24,7 @@ class SignalHandler {
   }
 
   var pipe: [Socket]
+  var signalQueue: [Signal] = []
 
   init() throws {
     pipe = try Socket.pipe()
@@ -40,15 +41,20 @@ class SignalHandler {
   }
 
   func handle(signal: Signal) {
-    if let handler = callbacks[signal] {
-      handler()
-    }
-
+    signalQueue.append(signal)
     wakeup()
   }
 
   var callbacks: [Signal: () -> ()] = [:]
   func register(signal: Signal, _ callback: () -> ()) {
     callbacks[signal] = callback
+  }
+
+  func process() {
+    while !signalQueue.isEmpty {
+      if let handler = callbacks[signalQueue.removeFirst()] {
+        handler()
+      }
+    }
   }
 }

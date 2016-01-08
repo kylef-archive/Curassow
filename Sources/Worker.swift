@@ -58,6 +58,7 @@ final class SyncronousWorker : WorkerType {
 
   func runOne(listener: Socket) {
     while isAlive {
+      sharedHandler?.process()
       notify()
       accept(listener)
       wait()

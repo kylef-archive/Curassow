@@ -81,6 +81,7 @@ class Arbiter<Worker : WorkerType> {
     manageWorkers()
 
     while running {
+      signalHandler.process()
       sleep()
       manageWorkers()
     }

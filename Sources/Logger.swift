@@ -16,4 +16,8 @@ class Logger {
   func info(message: String) {
     print("[\(currentTime())] [\(getpid())] [INFO] \(message)")
   }
+
+  func critical(message: String) {
+    print("[\(currentTime())] [\(getpid())] [CRITICAL] \(message)")
+  }
 }

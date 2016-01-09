@@ -13,6 +13,7 @@ class SignalHandler {
     case TTIN
     case TTOU
     case Terminate
+    case Child
   }
 
   class func registerSignals() {
@@ -21,9 +22,11 @@ class SignalHandler {
     signal(SIGQUIT) { _ in sharedHandler?.handle(.Quit) }
     signal(SIGTTIN) { _ in sharedHandler?.handle(.TTIN) }
     signal(SIGTTOU) { _ in sharedHandler?.handle(.TTOU) }
+    signal(SIGCHLD) { _ in sharedHandler?.handle(.Child) }
   }
 
   var pipe: [Socket]
+  var signalQueue: [Signal] = []
 
   init() throws {
     pipe = try Socket.pipe()
@@ -40,15 +43,24 @@ class SignalHandler {
   }
 
   func handle(signal: Signal) {
-    if let handler = callbacks[signal] {
-      handler()
-    }
-
+    signalQueue.append(signal)
     wakeup()
   }
 
   var callbacks: [Signal: () -> ()] = [:]
   func register(signal: Signal, _ callback: () -> ()) {
     callbacks[signal] = callback
+  }
+
+  func process() -> Bool {
+    let result = !signalQueue.isEmpty
+
+    if !signalQueue.isEmpty {
+      if let handler = callbacks[signalQueue.removeFirst()] {
+        handler()
+      }
+    }
+
+    return result
   }
 }

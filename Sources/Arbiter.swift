@@ -12,12 +12,12 @@ import Nest
 enum Address : CustomStringConvertible {
   case IP(hostname: String, port: UInt16)
 
-  func socket() throws -> Socket {
+  func socket(backlog: Int32) throws -> Socket {
     switch self {
     case let IP(hostname, port):
       let socket = try Socket()
       try socket.bind(hostname, port: port)
-      try socket.listen(20)
+      try socket.listen(backlog)
       // TODO: Set socket non blocking
       return socket
     }
@@ -38,6 +38,7 @@ class Arbiter<Worker : WorkerType> {
   var listeners: [Socket] = []
   var workers: [pid_t: Worker] = [:]
   let timeout: Int
+  let backlog: Int32 = 2048
 
   var numberOfWorkers: Int
   let addresses: [Address]
@@ -55,7 +56,7 @@ class Arbiter<Worker : WorkerType> {
 
   func createSockets() throws {
     for address in addresses {
-      listeners.append(try address.socket())
+      listeners.append(try address.socket(backlog))
       logger.info("Listening at http://\(address) (\(getpid()))")
     }
   }

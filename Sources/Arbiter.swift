@@ -37,7 +37,7 @@ class Arbiter<Worker : WorkerType> {
   let logger = Logger()
   var listeners: [Socket] = []
   var workers: [pid_t: Worker] = [:]
-  let timeout: Int = 30
+  let timeout: Int
 
   var numberOfWorkers: Int
   let addresses: [Address]
@@ -46,10 +46,11 @@ class Arbiter<Worker : WorkerType> {
 
   var signalHandler: SignalHandler!
 
-  init(application: RequestType -> ResponseType, workers: Int, addresses: [Address]) {
+  init(application: RequestType -> ResponseType, workers: Int, addresses: [Address], timeout: Int) {
     self.application = application
     self.numberOfWorkers = workers
     self.addresses = addresses
+    self.timeout = timeout
   }
 
   func createSockets() throws {

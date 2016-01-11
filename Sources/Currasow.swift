@@ -32,9 +32,10 @@ extension Address : ArgumentConvertible {
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   command(
     Option("workers", 1),
-    Option("bind", Address.IP(hostname: "0.0.0.0", port: 8000))
-  ) { workers, address in
-    let arbiter = Arbiter<SyncronousWorker>(application: closure, workers: workers, addresses: [address])
+    Option("bind", Address.IP(hostname: "0.0.0.0", port: 8000)),
+    Option("timeout", 30)
+  ) { workers, address, timeout in
+    let arbiter = Arbiter<SyncronousWorker>(application: closure, workers: workers, addresses: [address], timeout: timeout)
     try arbiter.run()
   }.run()
 }

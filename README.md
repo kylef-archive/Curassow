@@ -66,6 +66,15 @@ $ ./.build/release/HelloWorld --bind 127.0.0.1:9000
 [arbiter] Listening on 127.0.0.1:9000
 ```
 
+##### Configuring worker timeouts
+
+By default, Curassow will kill and restart workers after 30 seconds if it
+hasn't responded to the master process.
+
+```
+$ ./.build/release/HelloWorld --timeout 30
+```
+
 ### FAQ
 
 #### What platforms does Curassow support?

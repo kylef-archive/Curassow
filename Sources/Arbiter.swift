@@ -276,6 +276,8 @@ public final class Arbiter<Worker : WorkerType> {
       return
     }
 
+    SignalHandler.reset()
+
     let workerPid = getpid()
     worker.run()
     logger.info("Worker exiting (pid: \(workerPid))")

@@ -2,7 +2,7 @@
 
 When it comes to deploying your Curassow server to production, it's highly
 recommended to run Curassow behind a HTTP proxy such as
-[nginx](http://nginx.org://nginx.org).
+[nginx](http://nginx.org/).
 
 It's important to use a proxy server that can buffer slow clients when using
 Curassow. Without buffering slow clients, Curassow will be easily be
@@ -13,7 +13,7 @@ so this does not apply on these types of platforms.*
 
 ## nginx
 
-We highly recommend [nginx](http://nginx.org://nginx.org), you can find
+We highly recommend [nginx](http://nginx.org/), you can find
 an example configuration below.
 
 ```nginx

@@ -95,7 +95,7 @@ class Socket {
     var addr = sockaddr_in()
     addr.sin_family = sa_family_t(AF_INET)
     addr.sin_port = in_port_t(htons(in_port_t(port)))
-    addr.sin_addr = in_addr(s_addr: in_addr_t(0))
+    addr.sin_addr = in_addr(s_addr: address.withCString { inet_addr($0) })
     addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
    let len = socklen_t(UInt8(sizeof(sockaddr_in)))

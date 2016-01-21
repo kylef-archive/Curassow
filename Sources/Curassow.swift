@@ -12,15 +12,23 @@ import Inquiline
 extension Address : ArgumentConvertible {
   init(parser: ArgumentParser) throws {
     if let value = parser.shift() {
-      let components = value.characters.split(":").map(String.init)
-      if components.count != 2 {
-        throw ArgumentError.InvalidType(value: value, type: "hostname and port separated by `:`.", argument: nil)
-      }
-
-      if let port = UInt16(components[1]) {
-        self = .IP(hostname: components[0], port: port)
+      if value.hasPrefix("unix:") {
+        var path = value
+        let prefixBegin = path.startIndex
+        let prefixEnd = path.startIndex.successor().successor().successor().successor().successor()
+        path.replaceRange(Range(start: prefixBegin, end: prefixEnd), with: "")
+        self = .UNIX(path: path)
       } else {
-        throw ArgumentError.InvalidType(value: components[1], type: "number", argument: "port")
+        let components = value.characters.split(":").map(String.init)
+        if components.count != 2 {
+          throw ArgumentError.InvalidType(value: value, type: "hostname and port separated by `:`.", argument: nil)
+        }
+
+        if let port = UInt16(components[1]) {
+          self = .IP(hostname: components[0], port: port)
+        } else {
+          throw ArgumentError.InvalidType(value: components[1], type: "number", argument: "port")
+        }
       }
     } else {
       throw ArgumentError.MissingValue(argument: nil)

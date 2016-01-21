@@ -46,7 +46,7 @@ struct SocketError : ErrorType, CustomStringConvertible {
 }
 
 
-/// Represents a TCP AF_INET socket
+/// Represents a TCP AF_INET/AF_UNIX socket
 class Socket {
   typealias Descriptor = Int32
   typealias Port = UInt16
@@ -61,11 +61,11 @@ class Socket {
     return [Socket(descriptor: fds[0]), Socket(descriptor: fds[1])]
   }
 
-  init() throws {
+  init(family: Int32 = AF_INET) throws {
 #if os(Linux)
-    descriptor = socket(AF_INET, sock_stream, 0)
+    descriptor = socket(family, sock_stream, 0)
 #else
-    descriptor = socket(AF_INET, sock_stream, IPPROTO_TCP)
+    descriptor = socket(family, sock_stream, family == AF_UNIX ? 0 : IPPROTO_TCP)
 #endif
     assert(descriptor > 0)
 
@@ -99,6 +99,37 @@ class Socket {
     addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
    let len = socklen_t(UInt8(sizeof(sockaddr_in)))
+    guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
+      throw SocketError()
+    }
+  }
+
+  func bind(path: String) throws {
+    var addr = sockaddr_un()
+    addr.sun_family = sa_family_t(AF_UNIX)
+
+    // addr.sun_path is a `char [N]` and become a tuple in Swift.
+    // Its size is different on different platforms.
+    // Details can be found in `man 7 unix`
+
+    // FIXME: find a better way to set addr.sun_path
+
+#if os(Linux)
+    // char sun_path[108];
+    typealias SunPathType = (Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8)
+#else
+    // char sun_path[104];
+    typealias SunPathType = (Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8)
+    addr.sun_len = UInt8(sizeof(sockaddr_un))
+#endif
+
+    let ptr = UnsafeMutablePointer<SunPathType>.alloc(sizeof(SunPathType))
+    path.withCString {
+      memcpy(ptr, $0, path.utf8.count)
+    }
+    addr.sun_path = ptr.memory
+
+    let len = socklen_t(UInt8(sizeof(sockaddr_un)))
     guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }

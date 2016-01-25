@@ -10,6 +10,12 @@ endif
 SPECS=HTTPParser
 SPEC_FILES=$(foreach spec,$(SPECS),Tests/$(spec)Spec.swift)
 
+RELEASE_LIBS=Curassow Commander Inquiline Nest
+DEBUG_LIBS=$(RELEASE_LIBS) Spectre
+
+DEBUG_SWIFT_ARGS=$(foreach lib,$(DEBUG_LIBS),-Xlinker .build/debug/$(lib).a)
+RELEASE_SWIFT_ARGS=$(foreach lib,$(RELEASE_LIBS),-Xlinker .build/release/$(lib).a)
+
 curassow:
 	@echo "Building Curassow"
 	@swift build
@@ -20,11 +26,7 @@ run-tests: curassow Tests/main.swift $(SPEC_FILES)
 		Tests/main.swift \
 		$(SPEC_FILES) \
 		-I.build/debug \
-		-Xlinker .build/debug/Spectre.a \
-		-Xlinker .build/debug/Commander.a \
-		-Xlinker .build/debug/Curassow.a \
-		-Xlinker .build/debug/Inquiline.a \
-		-Xlinker .build/debug/Nest.a \
+		$(DEBUG_SWIFT_ARGS)
 
 test: run-tests
 	@./run-tests
@@ -38,10 +40,7 @@ example: curassow-release example/example.swift
 	@$(SWIFTC) -o example/example \
 		example/example.swift \
 		-I.build/release \
-		-Xlinker .build/release/Curassow.a \
-		-Xlinker .build/release/Commander.a \
-		-Xlinker .build/release/Inquiline.a \
-		-Xlinker .build/release/Nest.a \
+		$(RELEASE_SWIFT_ARGS)
 
 clean:
 	rm -fr run-tests example/example .build

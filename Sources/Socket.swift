@@ -108,26 +108,15 @@ class Socket {
     var addr = sockaddr_un()
     addr.sun_family = sa_family_t(AF_UNIX)
 
-    // addr.sun_path is a `char [N]` and become a tuple in Swift.
-    // Its size is different on different platforms.
-    // Details can be found in `man 7 unix`
+    withUnsafeMutablePointer(&addr.sun_path.0) { ptr in
+      path.withCString {
+        strncpy(ptr, $0, min(sizeofValue(addr.sun_path) - 1, Int(strlen($0))))
+      }
+    }
 
-    // FIXME: find a better way to set addr.sun_path
-
-#if os(Linux)
-    // char sun_path[108];
-    typealias SunPathType = (Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8)
-#else
-    // char sun_path[104];
-    typealias SunPathType = (Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8, Int8)
+#if os(OSX)
     addr.sun_len = UInt8(sizeof(sockaddr_un))
 #endif
-
-    let ptr = UnsafeMutablePointer<SunPathType>.alloc(sizeof(SunPathType))
-    path.withCString {
-      memcpy(ptr, $0, path.utf8.count)
-    }
-    addr.sun_path = ptr.memory
 
     let len = socklen_t(UInt8(sizeof(sockaddr_un)))
     guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {

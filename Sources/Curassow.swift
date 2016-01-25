@@ -13,11 +13,8 @@ extension Address : ArgumentConvertible {
   init(parser: ArgumentParser) throws {
     if let value = parser.shift() {
       if value.hasPrefix("unix:") {
-        var path = value
-        let prefixBegin = path.startIndex
-        let prefixEnd = path.startIndex.successor().successor().successor().successor().successor()
-        path.replaceRange(Range(start: prefixBegin, end: prefixEnd), with: "")
-        self = .UNIX(path: path)
+        let prefixEnd = value.startIndex.advancedBy(5)
+        self = .UNIX(path: value[prefixEnd ..< value.endIndex])
       } else {
         let components = value.characters.split(":").map(String.init)
         if components.count != 2 {

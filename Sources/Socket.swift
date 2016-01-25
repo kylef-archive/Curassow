@@ -108,9 +108,13 @@ class Socket {
     var addr = sockaddr_un()
     addr.sun_family = sa_family_t(AF_UNIX)
 
+    guard path.utf8.count < sizeofValue(addr.sun_path) else {
+      throw SocketError()
+    }
+
     withUnsafeMutablePointer(&addr.sun_path.0) { ptr in
       path.withCString {
-        strncpy(ptr, $0, min(sizeofValue(addr.sun_path) - 1, Int(strlen($0))))
+        strncpy(ptr, $0, Int(strlen($0)))
       }
     }
 

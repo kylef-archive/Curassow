@@ -108,21 +108,25 @@ class Socket {
     var addr = sockaddr_un()
     addr.sun_family = sa_family_t(AF_UNIX)
 
-    guard path.utf8.count < sizeofValue(addr.sun_path) else {
+    let lengthOfPath = path.withCString { Int(strlen($0)) }
+
+    guard lengthOfPath < sizeofValue(addr.sun_path) else {
       throw SocketError()
     }
 
     withUnsafeMutablePointer(&addr.sun_path.0) { ptr in
       path.withCString {
-        strncpy(ptr, $0, Int(strlen($0)))
+        strncpy(ptr, $0, lengthOfPath)
       }
     }
 
-#if os(OSX)
-    addr.sun_len = UInt8(sizeof(sockaddr_un))
+#if os(Linux)
+    let len = socklen_t(UInt8(sizeof(sockaddr_un)))
+#else
+    addr.sun_len = UInt8(sizeof(sockaddr_un) - sizeofValue(addr.sun_path) + lengthOfPath)
+    let len = socklen_t(addr.sun_len)
 #endif
 
-    let len = socklen_t(UInt8(sizeof(sockaddr_un)))
     guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }

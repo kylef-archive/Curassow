@@ -84,7 +84,14 @@ final class SyncronousWorker : WorkerType {
   }
 
   func wait() -> [Socket] {
-    let timeout = timeval(tv_sec: self.timeout, tv_usec: 0)
+    let timeout: timeval
+
+    if self.timeout > 0 {
+      timeout = timeval(tv_sec: self.timeout, tv_usec: 0)
+    } else {
+      timeout = timeval(tv_sec: 120, tv_usec: 0)
+    }
+
     let (read, _, _) = select(listeners + [sharedHandler!.pipe[0]], [], [], timeout: timeout)
     return read
   }

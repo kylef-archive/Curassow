@@ -80,6 +80,8 @@ hasn't responded to the master process.
 $ ./.build/release/HelloWorld --timeout 30
 ```
 
+You can set the timeout to `0` to disable worker timeout handling.
+
 ### FAQ
 
 #### What platforms does Curassow support?

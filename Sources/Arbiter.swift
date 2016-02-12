@@ -127,7 +127,14 @@ class Arbiter<Worker : WorkerType> {
 
   /// Sleep, waiting for stuff to happen on our signal pipe
   func sleep() {
-    let timeout = timeval(tv_sec: self.timeout, tv_usec: 0)
+    let timeout: timeval
+
+    if self.timeout > 0 {
+      timeout = timeval(tv_sec: self.timeout, tv_usec: 0)
+    } else {
+      timeout = timeval(tv_sec: 30, tv_usec: 0)
+    }
+
     let (read, _, _) = select([signalHandler.pipe[0]], [], [], timeout: timeout)
 
     if !read.isEmpty {
@@ -199,6 +206,8 @@ class Arbiter<Worker : WorkerType> {
 
   // Murder workers that have timed out
   func murderWorkers() {
+    if timeout == 0 { return }
+
     var currentTime = timeval()
     gettimeofday(&currentTime, nil)
 

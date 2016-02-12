@@ -46,7 +46,7 @@ struct SocketError : ErrorType, CustomStringConvertible {
 }
 
 
-/// Represents a TCP AF_INET socket
+/// Represents a TCP AF_INET/AF_UNIX socket
 class Socket {
   typealias Descriptor = Int32
   typealias Port = UInt16
@@ -61,11 +61,11 @@ class Socket {
     return [Socket(descriptor: fds[0]), Socket(descriptor: fds[1])]
   }
 
-  init() throws {
+  init(family: Int32 = AF_INET) throws {
 #if os(Linux)
-    descriptor = socket(AF_INET, sock_stream, 0)
+    descriptor = socket(family, sock_stream, 0)
 #else
-    descriptor = socket(AF_INET, sock_stream, IPPROTO_TCP)
+    descriptor = socket(family, sock_stream, family == AF_UNIX ? 0 : IPPROTO_TCP)
 #endif
     assert(descriptor > 0)
 
@@ -99,6 +99,34 @@ class Socket {
     addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
    let len = socklen_t(UInt8(sizeof(sockaddr_in)))
+    guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
+      throw SocketError()
+    }
+  }
+
+  func bind(path: String) throws {
+    var addr = sockaddr_un()
+    addr.sun_family = sa_family_t(AF_UNIX)
+
+    let lengthOfPath = path.withCString { Int(strlen($0)) }
+
+    guard lengthOfPath < sizeofValue(addr.sun_path) else {
+      throw SocketError()
+    }
+
+    withUnsafeMutablePointer(&addr.sun_path.0) { ptr in
+      path.withCString {
+        strncpy(ptr, $0, lengthOfPath)
+      }
+    }
+
+#if os(Linux)
+    let len = socklen_t(UInt8(sizeof(sockaddr_un)))
+#else
+    addr.sun_len = UInt8(sizeof(sockaddr_un) - sizeofValue(addr.sun_path) + lengthOfPath)
+    let len = socklen_t(addr.sun_len)
+#endif
+
     guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }

@@ -30,6 +30,8 @@ private let system_select = Darwin.select
 private let system_pipe = Darwin.pipe
 #endif
 
+import Nest
+import Inquiline
 
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
@@ -148,21 +150,31 @@ class Socket {
     system_shutdown(descriptor, Int32(SHUT_RDWR))
   }
 
-  func send(output: String) {
-    output.withCString { bytes in
-#if os(Linux)
-    let flags = Int32(MSG_NOSIGNAL)
-#else
-    let flags = Int32(0)
-#endif
-      system_send(descriptor, bytes, Int(strlen(bytes)), flags)
-    }
+  func send(output: PayloadConvertible) {
+    send(output.toPayload())
   }
 
-  func write(output: String) {
-    output.withCString { bytes in
-      system_write(descriptor, bytes, Int(strlen(bytes)))
+  func send(output: PayloadType) {
+    #if os(Linux)
+        let flags = Int32(MSG_NOSIGNAL)
+    #else
+        let flags = Int32(0)
+    #endif
+    
+    var mutable = output
+    while let next = mutable.next() {
+        var mutable = next
+        system_send(descriptor, &mutable, 1, flags)
     }
+  }
+    
+
+  func write(output: String) {
+    write(Array(output.utf8))
+  }
+    
+  func write(bytes: [UInt8]) {
+    system_write(descriptor, bytes, Int(bytes.count))
   }
 
   func read(bytes: Int) throws -> [CChar] {

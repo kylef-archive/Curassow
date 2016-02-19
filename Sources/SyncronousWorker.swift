@@ -144,9 +144,8 @@ func sendResponse(client: Socket, response: ResponseType) {
   }
 
   if !hasLength {
-      if let body = response.body {
-      // TODO body shouldn't be a string
-      client.send("Content-Length: \(body.characters.count)\r\n")
+    if let body = response.body {
+      client.send("Content-Length: \(body.utf8.count)\r\n")
     } else {
       client.send("Content-Length: 0\r\n")
     }

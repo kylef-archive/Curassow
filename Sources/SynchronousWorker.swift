@@ -8,7 +8,7 @@ import Nest
 import Inquiline
 
 
-public final class SyncronousWorker : WorkerType {
+public final class SynchronousWorker : WorkerType {
   let configuration: Configuration
   let logger: Logger
   let listeners: [Socket]

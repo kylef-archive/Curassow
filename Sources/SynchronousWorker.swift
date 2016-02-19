@@ -69,8 +69,16 @@ public final class SynchronousWorker : WorkerType {
   }
 
   func runMultiple(listeners: [Socket]) {
-    // TODO multiple listners
-    fatalError("Curassow Syncronous worker cannot yet handle multiple listeners")
+    while isAlive {
+      sharedHandler?.process()
+      notify()
+
+      let sockets = wait().filter {
+        $0.descriptor != sharedHandler!.pipe[0].descriptor
+      }
+
+      sockets.forEach(accept)
+    }
   }
 
   // MARK: Signal Handling

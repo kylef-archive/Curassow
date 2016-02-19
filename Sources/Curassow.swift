@@ -83,7 +83,7 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
 
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   command(
-    Option("worker-type", "syncronous"),
+    Option("worker-type", "sync"),
     Option("workers", 1, description: "The number of processes for handling requests."),
     MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: 8000)], description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker.")

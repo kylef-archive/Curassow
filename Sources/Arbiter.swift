@@ -46,29 +46,26 @@ enum Address : CustomStringConvertible {
 
 /// Arbiter maintains the worker processes
 class Arbiter<Worker : WorkerType> {
+  let configuration: Configuration
   let logger = Logger()
   var listeners: [Socket] = []
-  var workers: [pid_t: Worker] = [:]
-  let timeout: Int
-  let backlog: Int32 = 2048
+  var workers: [pid_t: WorkerProcess] = [:]
 
   var numberOfWorkers: Int
-  let addresses: [Address]
 
   let application: RequestType -> ResponseType
 
   var signalHandler: SignalHandler!
 
-  init(application: RequestType -> ResponseType, workers: Int, addresses: [Address], timeout: Int) {
-    self.application = application
+  init(configuration: Configuration, workers: Int, application: Application) {
+    self.configuration = configuration
     self.numberOfWorkers = workers
-    self.addresses = addresses
-    self.timeout = timeout
+    self.application = application
   }
 
   func createSockets() throws {
-    for address in addresses {
-      listeners.append(try address.socket(backlog))
+    for address in configuration.addresses {
+      listeners.append(try address.socket(configuration.backlog))
       logger.info("Listening at http://\(address) (\(getpid()))")
     }
   }
@@ -129,8 +126,8 @@ class Arbiter<Worker : WorkerType> {
   func sleep() {
     let timeout: timeval
 
-    if self.timeout > 0 {
-      timeout = timeval(tv_sec: self.timeout, tv_usec: 0)
+    if configuration.timeout > 0 {
+      timeout = timeval(tv_sec: configuration.timeout, tv_usec: 0)
     } else {
       timeout = timeval(tv_sec: 30, tv_usec: 0)
     }
@@ -206,7 +203,7 @@ class Arbiter<Worker : WorkerType> {
 
   // Murder workers that have timed out
   func murderWorkers() {
-    if timeout == 0 { return }
+    if configuration.timeout == 0 { return }
 
     var currentTime = timeval()
     gettimeofday(&currentTime, nil)
@@ -214,13 +211,12 @@ class Arbiter<Worker : WorkerType> {
     for (pid, worker) in workers {
       let lastUpdate = currentTime.tv_sec - worker.temp.lastUpdate.tv_sec
 
-      if lastUpdate >= timeout {
+      if lastUpdate >= configuration.timeout {
         if worker.aborted {
           if kill(pid, SIGKILL) == ESRCH {
             workers.removeValueForKey(pid)
           }
         } else {
-          var worker = worker
           worker.aborted = true
 
           logger.critical("Worker timeout (pid: \(pid))")
@@ -254,11 +250,12 @@ class Arbiter<Worker : WorkerType> {
 
   // Spawns a new worker process
   func spawnWorker() {
-    let worker = Worker(logger: logger, listeners: listeners, timeout: timeout / 2, application: application)
+    let workerProcess = WorkerProcess()
+    let worker = Worker(configuration: configuration, logger: logger, listeners: listeners, notify: workerProcess.notify, application: application)
 
     let pid = system_fork()
     if pid != 0 {
-      workers[pid] = worker
+      workers[pid] = workerProcess
       return
     }
 

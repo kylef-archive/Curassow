@@ -8,17 +8,41 @@ import Nest
 import Inquiline
 
 
+typealias Application = RequestType -> ResponseType
+
+
 protocol WorkerType {
-  /// Initialises the worker
-  init(logger: Logger, listeners: [Socket], timeout: Int, application: RequestType -> ResponseType)
+  /*** Initialises the worker
+  - Parameters:
+      - configuration
+      - logger
+      - listeners
+      - notify: A notify callback, this should be retained and invoked to notify the arbiter of your existance to prevent timeouts
+      - application: The users Nest application
 
-  var temp: WorkerTemp { get }
+  NOTE: This is invoked from the master process
+  */
+  init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application)
 
-  /// Indicates when the worker has been aborted, mostly used by the arbiter
-  var aborted: Bool { get set }
+  /*** Runs the worker
+  The implementation should start listening for requests on the listeners,
+  and invoke the notify callback before `configuration.timeout` happens.
 
-  /// Runs the worker
+  NOTE: This is invoked from the workers fork
+  **/
   func run()
+}
+
+
+// Represents a worker
+final class WorkerProcess {
+  /// Indicates when the worker has been aborted, used by the arbiter
+  var aborted: Bool = false
+  let temp = WorkerTemp()
+
+  func notify() {
+    temp.notify()
+  }
 }
 
 

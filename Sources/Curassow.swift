@@ -68,6 +68,15 @@ func getIntEnv(key: String, `default`: Int) -> Int {
 }
 
 
+struct ServeError : ErrorType, CustomStringConvertible {
+  let description: String
+
+  init(_ description: String) {
+    self.description = description
+  }
+}
+
+
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   let port = UInt16(getIntEnv("PORT", default: 8000))
   let workers = getIntEnv("WEB_CONCURRENCY", default: 1)
@@ -86,6 +95,13 @@ func getIntEnv(key: String, `default`: Int) -> Int {
     if workerType == "synchronous" || workerType == "sync" {
       let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
       try arbiter.run(daemonize: daemonize)
+    } else if workerType == "dispatch" || workerType == "gcd" {
+#if os(OSX)
+      let arbiter = Arbiter<DispatchWorker>(configuration: configuration, workers: workers, application: closure)
+      try arbiter.run(daemonize: daemonize)
+#else
+      throw ServeError("The dispatch worker is only supported on OS X")
+#endif
     } else {
       throw ArgumentError.InvalidType(value: workerType, type: "worker type", argument: "worker-type")
     }

@@ -34,13 +34,60 @@ extension Address : ArgumentConvertible {
 }
 
 
+extension ArgumentConvertible {
+  init(string: String) throws {
+    try self.init(parser: ArgumentParser(arguments: [string]))
+  }
+}
+
+
+class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
+  typealias ValueType = [T]
+
+  let name: String
+  let flag: Character?
+  let description: String?
+  let `default`: ValueType
+  var type: ArgumentType { return .Option }
+
+  init(_ name: String, _ `default`: ValueType, flag: Character? = nil, description: String? = nil) {
+    self.name = name
+    self.flag = flag
+    self.description = description
+    self.`default` = `default`
+  }
+
+  func parse(parser: ArgumentParser) throws -> ValueType {
+    var options: ValueType = []
+
+    while let value = try parser.shiftValueForOption(name) {
+      let value = try T(string: value)
+      options.append(value)
+    }
+
+    if let flag = flag {
+      while let value = try parser.shiftValueForFlag(flag) {
+        let value = try T(string: value)
+        options.append(value)
+      }
+    }
+
+    if options.isEmpty {
+      return `default`
+    }
+
+    return options
+  }
+}
+
+
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   command(
     Option("workers", 1, description: "The number of processes for handling requests."),
-    Option("bind", Address.IP(hostname: "0.0.0.0", port: 8000), description: "The address to bind sockets."),
+    MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: 8000)], description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker.")
-  ) { workers, address, timeout in
-    let configuration = Configuration(addresses: [address], timeout: timeout)
+  ) { workers, addresses, timeout in
+    let configuration = Configuration(addresses: addresses, timeout: timeout)
     let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
     try arbiter.run()
   }.run()

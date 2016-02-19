@@ -8,10 +8,10 @@ import Nest
 import Inquiline
 
 
-typealias Application = RequestType -> ResponseType
+public typealias Application = RequestType -> ResponseType
 
 
-protocol WorkerType {
+public protocol WorkerType {
   /*** Initialises the worker
   - Parameters:
       - configuration

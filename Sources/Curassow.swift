@@ -10,7 +10,7 @@ import Inquiline
 
 
 extension Address : ArgumentConvertible {
-  init(parser: ArgumentParser) throws {
+  public init(parser: ArgumentParser) throws {
     if let value = parser.shift() {
       if value.hasPrefix("unix:") {
         let prefixEnd = value.startIndex.advancedBy(5)

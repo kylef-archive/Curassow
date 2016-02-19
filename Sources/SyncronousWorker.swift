@@ -8,7 +8,7 @@ import Nest
 import Inquiline
 
 
-final class SyncronousWorker : WorkerType {
+public final class SyncronousWorker : WorkerType {
   let configuration: Configuration
   let logger: Logger
   let listeners: [Socket]
@@ -22,7 +22,7 @@ final class SyncronousWorker : WorkerType {
   let application: RequestType -> ResponseType
   var isAlive: Bool = false
 
-  init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application) {
+  public init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application) {
     self.logger = logger
     self.listeners = listeners
     self.configuration = configuration
@@ -39,7 +39,7 @@ final class SyncronousWorker : WorkerType {
     SignalHandler.registerSignals()
   }
 
-  func run() {
+  public func run() {
     logger.info("Booting worker process with pid: \(getpid())")
 
     do {

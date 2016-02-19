@@ -9,7 +9,7 @@ import Darwin.C
 import Nest
 
 
-enum Address : CustomStringConvertible {
+public enum Address : CustomStringConvertible {
   case IP(hostname: String, port: UInt16)
   case UNIX(path: String)
 
@@ -33,7 +33,7 @@ enum Address : CustomStringConvertible {
     }
   }
 
-  var description: String {
+  public var description: String {
     switch self {
     case let IP(hostname, port):
       return "\(hostname):\(port)"
@@ -45,7 +45,7 @@ enum Address : CustomStringConvertible {
 
 
 /// Arbiter maintains the worker processes
-class Arbiter<Worker : WorkerType> {
+public final class Arbiter<Worker : WorkerType> {
   let configuration: Configuration
   let logger = Logger()
   var listeners: [Socket] = []
@@ -57,7 +57,7 @@ class Arbiter<Worker : WorkerType> {
 
   var signalHandler: SignalHandler!
 
-  init(configuration: Configuration, workers: Int, application: Application) {
+  public init(configuration: Configuration, workers: Int, application: Application) {
     self.configuration = configuration
     self.numberOfWorkers = workers
     self.application = application
@@ -85,7 +85,7 @@ class Arbiter<Worker : WorkerType> {
   var running = false
 
   // Main run loop for the master process
-  func run() throws {
+  public func run() throws {
     running = true
 
     try registerSignals()

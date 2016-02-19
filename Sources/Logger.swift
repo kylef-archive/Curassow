@@ -4,7 +4,8 @@ import Glibc
 import Darwin.C
 #endif
 
-class Logger {
+
+public final class Logger {
   func currentTime() -> String {
     var t = time(nil)
     let tm = localtime(&t)
@@ -13,11 +14,11 @@ class Logger {
     return date.string ?? "unknown"
   }
 
-  func info(message: String) {
+  public func info(message: String) {
     print("[\(currentTime())] [\(getpid())] [INFO] \(message)")
   }
 
-  func critical(message: String) {
+  public func critical(message: String) {
     print("[\(currentTime())] [\(getpid())] [CRITICAL] \(message)")
   }
 }

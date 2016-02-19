@@ -10,7 +10,7 @@ import Inquiline
 
 
 extension Address : ArgumentConvertible {
-  init(parser: ArgumentParser) throws {
+  public init(parser: ArgumentParser) throws {
     if let value = parser.shift() {
       if value.hasPrefix("unix:") {
         let prefixEnd = value.startIndex.advancedBy(5)
@@ -40,7 +40,8 @@ extension Address : ArgumentConvertible {
     Option("bind", Address.IP(hostname: "0.0.0.0", port: 8000), description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker.")
   ) { workers, address, timeout in
-    let arbiter = Arbiter<SyncronousWorker>(application: closure, workers: workers, addresses: [address], timeout: timeout)
+    let configuration = Configuration(addresses: [address], timeout: timeout)
+    let arbiter = Arbiter<SyncronousWorker>(configuration: configuration, workers: workers, application: closure)
     try arbiter.run()
   }.run()
 }

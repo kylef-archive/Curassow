@@ -47,7 +47,7 @@ struct SocketError : ErrorType, CustomStringConvertible {
 
 
 /// Represents a TCP AF_INET/AF_UNIX socket
-class Socket {
+public final class Socket {
   typealias Descriptor = Int32
   typealias Port = UInt16
 

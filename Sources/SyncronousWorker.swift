@@ -8,22 +8,26 @@ import Nest
 import Inquiline
 
 
-final class SyncronousWorker : WorkerType {
+public final class SyncronousWorker : WorkerType {
+  let configuration: Configuration
   let logger: Logger
   let listeners: [Socket]
-  let timeout: Int
+
+  var timeout: Int {
+    return configuration.timeout / 2
+  }
+
+  let notify: Void -> Void
+
   let application: RequestType -> ResponseType
   var isAlive: Bool = false
-  let temp: WorkerTemp
-  var aborted: Bool = false
 
-  init(logger: Logger, listeners: [Socket], timeout: Int, application: RequestType -> ResponseType) {
+  public init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application) {
     self.logger = logger
     self.listeners = listeners
-    self.timeout = timeout
+    self.configuration = configuration
+    self.notify = notify
     self.application = application
-
-    temp = WorkerTemp()
   }
 
   func registerSignals() throws {
@@ -35,7 +39,7 @@ final class SyncronousWorker : WorkerType {
     SignalHandler.registerSignals()
   }
 
-  func run() {
+  public func run() {
     logger.info("Booting worker process with pid: \(getpid())")
 
     do {
@@ -77,10 +81,6 @@ final class SyncronousWorker : WorkerType {
 
   func handleTerminate() {
     isAlive = false
-  }
-
-  func notify() {
-    temp.notify()
   }
 
   func wait() -> [Socket] {

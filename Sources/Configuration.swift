@@ -1,14 +1,11 @@
-public final class Configuration {
-  let addresses: [Address]
+public struct Configuration {
+  public var addresses: [Address] = []
 
   /// Workers silent for more than this many seconds are killed and restarted
-  public let timeout: Int
+  public var timeout: Int = 30
 
-  let backlog: Int32
+  /// The maximum number of pending connections
+  public var backlog: Int32 = 2048
 
-  public init(addresses: [Address] = [], timeout: Int = 30, backlog: Int32 = 2048) {
-    self.addresses = addresses
-    self.timeout = timeout
-    self.backlog = backlog
-  }
+  public init() {}
 }

@@ -88,7 +88,9 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
     MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: 8000)], description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker.")
   ) { workerType, workers, addresses, timeout in
-    let configuration = Configuration(addresses: addresses, timeout: timeout)
+    var configuration = Configuration()
+    configuration.addresses = addresses
+    configuration.timeout = timeout
 
     if workerType == "synchronous" || workerType == "sync" {
       let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)

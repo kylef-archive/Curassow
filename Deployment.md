@@ -35,8 +35,11 @@ events {
 
 http {
   upstream curassow {
-    # Change IP and port for your Curassow server
-    server 127.0.0.1:8000 fail_timeout=0;
+    # When serving via UNIX domain socket. Change location to your socket
+    # server unix:/tmp/curassow.sock fail_timeout=0;
+
+    # When serving via IP. Change address and port for your Curassow server
+    # server 127.0.0.1:8000 fail_timeout=0;
   }
 
   server {

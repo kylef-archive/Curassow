@@ -1,0 +1,3 @@
+import Curassow
+
+serve(application)

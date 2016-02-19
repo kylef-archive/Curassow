@@ -1,0 +1,3 @@
+[submodule "Tests/Integration/NestTestSuite"]
+	path = Tests/Integration/NestTestSuite
+	url = https://github.com/nestproject/NestTestSuite

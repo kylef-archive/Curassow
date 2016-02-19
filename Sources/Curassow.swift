@@ -83,12 +83,18 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
 
 @noreturn public func serve(closure: RequestType -> ResponseType) {
   command(
+    Option("worker-type", "syncronous"),
     Option("workers", 1, description: "The number of processes for handling requests."),
     MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: 8000)], description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker.")
-  ) { workers, addresses, timeout in
+  ) { workerType, workers, addresses, timeout in
     let configuration = Configuration(addresses: addresses, timeout: timeout)
-    let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
-    try arbiter.run()
+
+    if workerType == "synchronous" || workerType == "sync" {
+      let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
+      try arbiter.run()
+    } else {
+      throw ArgumentError.InvalidType(value: workerType, type: "worker type", argument: "worker-type")
+    }
   }.run()
 }

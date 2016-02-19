@@ -21,8 +21,10 @@ public final class SynchronousWorker : WorkerType {
 
   let application: RequestType -> ResponseType
   var isAlive: Bool = false
+  let parentPid: pid_t
 
   public init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application) {
+    self.parentPid = getpid()
     self.logger = logger
     self.listeners = listeners
     self.configuration = configuration
@@ -59,11 +61,25 @@ public final class SynchronousWorker : WorkerType {
     }
   }
 
+  func isParentAlive() -> Bool {
+    if getppid() != parentPid {
+      logger.info("Parent changed, shutting down")
+      return false
+    }
+
+    return true
+  }
+
   func runOne(listener: Socket) {
     while isAlive {
       sharedHandler?.process()
       notify()
       accept(listener)
+
+      if !isParentAlive() {
+        return
+      }
+
       wait()
     }
   }
@@ -78,6 +94,10 @@ public final class SynchronousWorker : WorkerType {
       }
 
       sockets.forEach(accept)
+
+      if !isParentAlive() {
+        return
+      }
     }
   }
 

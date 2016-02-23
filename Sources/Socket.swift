@@ -34,8 +34,8 @@ private let system_pipe = Darwin.pipe
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
   let number: Int32
-
-  init(function: String = __FUNCTION__) {
+  
+  init(function: String = #function ) {
     self.function = function
     self.number = errno
   }

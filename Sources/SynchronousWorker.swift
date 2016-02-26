@@ -144,7 +144,7 @@ public final class SynchronousWorker : WorkerType {
       response = error.response()
     } catch {
       print("[worker] Unknown error: \(error)")
-      response = Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
+      response = Response(.InternalServerError, contentType: "text/plain", content: "Internal Server Error")
     }
 
     sendResponse(client, response: response)
@@ -157,31 +157,20 @@ public final class SynchronousWorker : WorkerType {
 
 func sendResponse(client: Socket, response: ResponseType) {
   client.send("HTTP/1.1 \(response.statusLine)\r\n")
-
   client.send("Connection: close\r\n")
-  var hasLength = false
 
   for (key, value) in response.headers {
     if key != "Connection" {
       client.send("\(key): \(value)\r\n")
-    }
-
-    if key == "Content-Length" {
-      hasLength = true
-    }
-  }
-
-  if !hasLength {
-    if let body = response.body {
-      client.send("Content-Length: \(body.utf8.count)\r\n")
-    } else {
-      client.send("Content-Length: 0\r\n")
     }
   }
 
   client.send("\r\n")
 
   if let body = response.body {
-    client.send(body)
+    var body = body
+    while let bytes = body.next() {
+      client.send(bytes)
+    }
   }
 }

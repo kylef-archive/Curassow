@@ -9,6 +9,23 @@ import Nest
 @testable import Curassow
 
 
+extension PayloadType {
+  mutating func collect() -> [UInt8] {
+    var buffer: [UInt8] = []
+
+    while true {
+      if let bytes = next() {
+        buffer += bytes
+      } else {
+        break
+      }
+    }
+
+    return buffer
+  }
+}
+
+
 func describeHTTPParser() {
 
 describe("HTTPParser") {
@@ -33,7 +50,7 @@ describe("HTTPParser") {
     outSocket?.close()
   }
 
-  $0.it("can parse a HTTP request body") {
+  $0.it("can parse a HTTP request") {
     outSocket.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
 
     let request = try parser.parse()
@@ -46,11 +63,18 @@ describe("HTTPParser") {
     try expect(header.1) == "localhost"
   }
 
-  $0.it("reads the message body when Content-Length is present") {
+  $0.it("provides the message body until Content-Length value") {
     outSocket.write("GET / HTTP/1.1\r\nContent-Length: 5\r\n\r\nabcdefgh")
 
-    let request = try parser.parse()
-    try expect(request.body) == "abcde"
+    var request = try parser.parse()
+
+    let body = request.body!.collect()
+    try expect(body.count) >= 5
+    try expect(body[0]) == 97
+    try expect(body[1]) == 98
+    try expect(body[2]) == 99
+    try expect(body[3]) == 100
+    try expect(body[4]) == 101
   }
 
   $0.it("throws an error when the client uses bad HTTP syntax") {
@@ -71,7 +95,7 @@ describe("HTTPParser") {
   }
 
   $0.it("throws an error when the client disconnects before sending the entire message body") {
-    outSocket.write("GET / HTTP/1.1\r\nContent-Length: 42\r\n\r\nabcdefgh")
+    outSocket.write("GET / HTTP/1.1\r\nContent-Length: 42\r\n")
     outSocket.close()
     outSocket = nil
 

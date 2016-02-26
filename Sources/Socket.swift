@@ -159,6 +159,15 @@ public final class Socket {
     }
   }
 
+  func send(bytes: [UInt8]) {
+#if os(Linux)
+    let flags = Int32(MSG_NOSIGNAL)
+#else
+    let flags = Int32(0)
+#endif
+    system_send(descriptor, bytes, bytes.count, flags)
+  }
+
   func write(output: String) {
     output.withCString { bytes in
       system_write(descriptor, bytes, Int(strlen(bytes)))

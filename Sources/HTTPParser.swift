@@ -15,15 +15,19 @@ enum HTTPParserError : ErrorType {
   case Internal
 
   func response() -> ResponseType {
+    func error(status: Status, message: String) -> ResponseType {
+      return Response(status, contentType: "text/plain", content: message)
+    }
+
     switch self {
     case let .BadSyntax(syntax):
-      return Response(.BadRequest, contentType: "text/plain", body: "Bad Syntax (\(syntax))")
+      return error(.BadRequest, message: "Bad Syntax (\(syntax))")
     case let .BadVersion(version):
-      return Response(.BadRequest, contentType: "text/plain", body: "Bad Version (\(version))")
+      return error(.BadRequest, message: "Bad Version (\(version))")
     case .Incomplete:
-      return Response(.BadRequest, contentType: "text/plain", body: "Incomplete HTTP Request")
+      return error(.BadRequest, message: "Incomplete HTTP Request")
     case .Internal:
-      return Response(.InternalServerError, contentType: "text/plain", body: "Internal Server Error")
+      return error(.InternalServerError, message: "Internal Server Error")
     }
   }
 }
@@ -102,15 +106,10 @@ class HTTPParser {
       throw HTTPParserError.BadVersion(version)
     }
 
-    var request = Request(method: method, path: path, headers: parseHeaders(components))
-
-    if let contentLength = request.contentLength {
-      let remainingContentLength = contentLength - startOfBody.count
-      let bodyBytes = startOfBody + (try readBody(maxLength: remainingContentLength))
-      request.body = try parseBody(bodyBytes, contentLength: contentLength)
-    }
-
-    return request
+    let headers = parseHeaders(components)
+    let contentSize = headers.filter { $0.0.lowercaseString == "content-length" }.flatMap { Int($0.1) }.first
+    let payload = SocketPayload(socket: socket, buffer: startOfBody.map { UInt8($0) }, contentSize: contentSize)
+    return Request(method: method, path: path, headers: headers, content: payload)
   }
 
   func parseHeaders(headers: [String]) -> [Header] {
@@ -238,5 +237,50 @@ extension String {
     }
 
     return true
+  }
+}
+
+
+class SocketPayload : PayloadType, PayloadConvertible, GeneratorType {
+  let socket: Socket
+  var buffer: [UInt8]
+  let bufferSize: Int = 8192
+  var remainingSize: Int?
+
+  init(socket: Socket, buffer: [UInt8], contentSize: Int? = nil) {
+    self.socket = socket
+    self.buffer = buffer
+    self.remainingSize = contentSize
+  }
+
+  func next() -> [UInt8]? {
+    if !buffer.isEmpty {
+      if let remainingSize = remainingSize {
+        self.remainingSize = remainingSize - self.buffer.count
+      }
+
+      let buffer = self.buffer
+      self.buffer = []
+      return buffer
+    }
+
+    if let remainingSize = remainingSize where remainingSize < 0 {
+      return nil
+    }
+
+    let size = min(remainingSize ?? bufferSize, bufferSize)
+    if let bytes = try? socket.read(size) {
+      if let remainingSize = remainingSize {
+        self.remainingSize = remainingSize - bytes.count
+      }
+
+      return bytes.map { UInt8($0) }
+    }
+
+    return nil
+  }
+
+  func toPayload() -> PayloadType {
+    return self
   }
 }

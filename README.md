@@ -82,6 +82,15 @@ $ ./.build/release/HelloWorld --timeout 30
 
 You can set the timeout to `0` to disable worker timeout handling.
 
+##### Daemon
+
+Daemonize the Curassow process. Detaches the server from the controlling
+terminal and enters the background.
+
+```shell
+$ ./.build/release/HelloWorld --daemon
+```
+
 ### FAQ
 
 #### What platforms does Curassow support?

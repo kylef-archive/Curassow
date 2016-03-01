@@ -86,15 +86,16 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
     Option("worker-type", "sync"),
     Option("workers", 1, description: "The number of processes for handling requests."),
     MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: 8000)], description: "The address to bind sockets."),
-    Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker.")
-  ) { workerType, workers, addresses, timeout in
+    Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker."),
+    Flag("daemon", description: "Detaches the server from the controlling terminal and enter the background.")
+  ) { workerType, workers, addresses, timeout, daemonize in
     var configuration = Configuration()
     configuration.addresses = addresses
     configuration.timeout = timeout
 
     if workerType == "synchronous" || workerType == "sync" {
       let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
-      try arbiter.run()
+      try arbiter.run(daemonize: daemonize)
     } else {
       throw ArgumentError.InvalidType(value: workerType, type: "worker type", argument: "worker-type")
     }

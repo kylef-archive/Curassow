@@ -85,11 +85,28 @@ public final class Arbiter<Worker : WorkerType> {
   var running = false
 
   // Main run loop for the master process
-  public func run() throws {
+  public func run(daemonize daemonize: Bool = false) throws {
     running = true
 
     try registerSignals()
     try createSockets()
+
+    if daemonize {
+      let devnull = open("/dev/null", O_RDWR)
+      if devnull == -1 {
+        throw SocketError()
+      }
+
+      if system_fork() != 0 {
+        exit(0)
+      }
+
+      setsid()
+
+      for descriptor in Int32(0)..<Int32(3) {
+        dup2(devnull, descriptor)
+      }
+    }
 
     manageWorkers()
 

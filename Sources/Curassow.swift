@@ -95,6 +95,9 @@ struct ServeError : ErrorType, CustomStringConvertible {
     if workerType == "synchronous" || workerType == "sync" {
       let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
       try arbiter.run(daemonize: daemonize)
+    } else if workerType == "async" || workerType == "asynchronous" {
+      let arbiter = Arbiter<AsynchronousWorker>(configuration: configuration, workers: workers, application: closure)
+      try arbiter.run(daemonize: daemonize)
     } else if workerType == "dispatch" || workerType == "gcd" {
 #if os(OSX)
       let arbiter = Arbiter<DispatchWorker>(configuration: configuration, workers: workers, application: closure)

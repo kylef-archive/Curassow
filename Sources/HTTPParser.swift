@@ -140,6 +140,20 @@ class HTTPParser {
 }
 
 
+class AsyncHTTPParser {
+  let socket: Socket
+  var buffer: [CChar] = []
+
+  init(socket: Socket) {
+    self.socket = socket
+  }
+
+  func parse() throws -> RequestType? {
+    return nil
+  }
+}
+
+
 extension CollectionType where Generator.Element == CChar {
   func find(characters: [CChar]) -> ([CChar], [CChar])? {
     var lhs: [CChar] = []

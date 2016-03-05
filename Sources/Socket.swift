@@ -48,6 +48,7 @@ struct SocketError : ErrorType, CustomStringConvertible {
 
 /// Represents a TCP AF_INET/AF_UNIX socket
 public final class Socket {
+public final class Socket : Equatable {
   public typealias Descriptor = Int32
   typealias Port = UInt16
 
@@ -272,4 +273,9 @@ func select(reads: [Socket], _ writes: [Socket], _ errors: [Socket], timeout: ti
 
   // error
   return ([], [], [])
+}
+
+
+public func ==(lhs: Socket, rhs: Socket) -> Bool {
+  return lhs.descriptor == rhs.descriptor
 }

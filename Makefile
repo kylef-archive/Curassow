@@ -53,11 +53,7 @@ integration-test: run-integration-tests
 	@Tests/Integration/NestTestSuite/.build/debug/NestTestSuite --host http://127.0.0.1:9393 Tests/Integration/NestTestSuite/Features/*.feature
 	@pkill run-integration-tests || true
 
-ifeq ($(shell uname -s), Darwin)
-test: unit-test integration-test
-else
 test: unit-test
-endif
 
 curassow-release:
 	@echo "Building Curassow"

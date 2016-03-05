@@ -81,11 +81,26 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
 }
 
 
+func getIntEnv(key: String, `default`: Int) -> Int {
+  let value = getenv(key)
+  if value != nil {
+    if let stringValue = String.fromCString(value), intValue = Int(stringValue) {
+      return intValue
+    }
+  }
+
+  return `default`
+}
+
+
 @noreturn public func serve(closure: RequestType -> ResponseType) {
+  let port = UInt16(getIntEnv("PORT", default: 8000))
+  let workers = getIntEnv("WEB_CONCURRENCY", default: 1)
+
   command(
     Option("worker-type", "sync"),
-    Option("workers", 1, description: "The number of processes for handling requests."),
-    MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: 8000)], description: "The address to bind sockets."),
+    Option("workers", workers, description: "The number of processes for handling requests."),
+    MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: port)], description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker."),
     Flag("daemon", description: "Detaches the server from the controlling terminal and enter the background.")
   ) { workerType, workers, addresses, timeout, daemonize in

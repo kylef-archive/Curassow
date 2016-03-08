@@ -1,2 +1,3 @@
+testConfiguration()
 testHTTPParser()
 testAddress()

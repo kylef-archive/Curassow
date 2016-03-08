@@ -19,7 +19,7 @@ public enum Address : CustomStringConvertible {
       let socket = try Socket()
       try socket.bind(hostname, port: port)
       try socket.listen(backlog)
-      // TODO: Set socket non blocking
+      socket.blocking = false
       return socket
     case let UNIX(path):
       // Delete old file if exists
@@ -28,7 +28,7 @@ public enum Address : CustomStringConvertible {
       let socket = try Socket(family: AF_UNIX)
       try socket.bind(path)
       try socket.listen(backlog)
-      // TODO: Set socket non blocking
+      socket.blocking = false
       return socket
     }
   }

@@ -7,7 +7,7 @@ TARGET=x86_64-apple-macosx10.10
 SWIFTC=swiftc -target $(TARGET) -sdk $(SDK) -Xlinker -all_load
 endif
 
-SPECS=HTTPParser
+SPECS=HTTPParser Address
 SPEC_FILES=$(foreach spec,$(SPECS),Tests/$(spec)Spec.swift)
 
 RELEASE_LIBS=Curassow Commander Inquiline Nest

@@ -53,12 +53,12 @@ public final class Socket {
 
   let descriptor: Descriptor
 
-  class func pipe() throws -> [Socket] {
+  class func pipe() throws -> (read: Socket, write: Socket) {
     var fds: [Int32] = [0, 0]
     if system_pipe(&fds) == -1 {
       throw SocketError()
     }
-    return [Socket(descriptor: fds[0]), Socket(descriptor: fds[1])]
+    return (Socket(descriptor: fds[0]), Socket(descriptor: fds[1]))
   }
 
   init(family: Int32 = AF_INET) throws {

@@ -34,21 +34,20 @@ class SignalHandler {
     signal(SIGCHLD, SIG_DFL)
   }
 
-  var pipe: [Socket]
+  let pipe: (read: Socket, write: Socket)
   var signalQueue: [Signal] = []
 
   init() throws {
     pipe = try Socket.pipe()
-
-    for socket in pipe {
-      socket.closeOnExec = true
-      socket.blocking = false
-    }
+    pipe.read.closeOnExec = true
+    pipe.read.blocking = false
+    pipe.write.closeOnExec = true
+    pipe.write.blocking = false
   }
 
   // Wake up the process by writing to the pipe
   func wakeup() {
-    pipe[1].send(".")
+    pipe.write.send(".")
   }
 
   func handle(signal: Signal) {

@@ -90,7 +90,7 @@ public final class SynchronousWorker : WorkerType {
       notify()
 
       let sockets = wait().filter {
-        $0.descriptor != sharedHandler!.pipe[0].descriptor
+        $0.descriptor != sharedHandler!.pipe.read.descriptor
       }
 
       sockets.forEach(accept)
@@ -120,7 +120,7 @@ public final class SynchronousWorker : WorkerType {
       timeout = timeval(tv_sec: 120, tv_usec: 0)
     }
 
-    let (read, _, _) = select(listeners + [sharedHandler!.pipe[0]], [], [], timeout: timeout)
+    let (read, _, _) = select(listeners + [sharedHandler!.pipe.read], [], [], timeout: timeout)
     return read
   }
 

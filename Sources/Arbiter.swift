@@ -149,11 +149,11 @@ public final class Arbiter<Worker : WorkerType> {
       timeout = timeval(tv_sec: 30, tv_usec: 0)
     }
 
-    let (read, _, _) = select([signalHandler.pipe[0]], [], [], timeout: timeout)
+    let (read, _, _) = select([signalHandler.pipe.read], [], [], timeout: timeout)
 
     if !read.isEmpty {
       do {
-        while try signalHandler.pipe[0].read(1).count > 0 {}
+        while try signalHandler.pipe.read.read(1).count > 0 {}
       } catch {}
     }
   }

@@ -48,10 +48,10 @@ struct SocketError : ErrorType, CustomStringConvertible {
 
 /// Represents a TCP AF_INET/AF_UNIX socket
 public final class Socket {
-  typealias Descriptor = Int32
+  public typealias Descriptor = Int32
   typealias Port = UInt16
 
-  let descriptor: Descriptor
+  public let descriptor: Descriptor
 
   class func pipe() throws -> (read: Socket, write: Socket) {
     var fds: [Int32] = [0, 0]

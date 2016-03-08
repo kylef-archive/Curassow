@@ -8,5 +8,5 @@ import Inquiline
 
 
 serve { _ in
-  Response(.Ok, contentType: "text/plain", body: "Hello World")
+  Response(.Ok, contentType: "text/plain", content: "Hello World")
 }

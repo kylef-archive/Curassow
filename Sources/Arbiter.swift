@@ -50,7 +50,7 @@ public final class Arbiter<Worker : WorkerType> {
   var running = false
 
   // Main run loop for the master process
-  public func run(daemonize daemonize: Bool = false) throws {
+  @noreturn public func run(daemonize daemonize: Bool = false) throws {
     running = true
 
     try registerSignals()
@@ -98,7 +98,7 @@ public final class Arbiter<Worker : WorkerType> {
     running = false
   }
 
-  func halt(exitStatus: Int32 = 0) {
+  @noreturn func halt(exitStatus: Int32 = 0) {
     stop()
     logger.info("Shutting down")
     exit(exitStatus)

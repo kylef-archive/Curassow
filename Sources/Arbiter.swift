@@ -86,7 +86,7 @@ public final class Arbiter<Worker : WorkerType> {
     halt()
   }
 
-  func stop(graceful: Bool = true) {
+  public func stop(graceful: Bool = true) {
     listeners.forEach { $0.close() }
 
     if graceful {

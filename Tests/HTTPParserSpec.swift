@@ -42,7 +42,7 @@ func testHTTPParser() {
       inSocket = Socket(descriptor: descriptors[0])
       outSocket = Socket(descriptor: descriptors[1])
 
-      parser = HTTPParser(socket: inSocket)
+      parser = HTTPParser(reader: inSocket)
     }
 
     $0.after {

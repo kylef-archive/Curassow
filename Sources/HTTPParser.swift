@@ -32,63 +32,53 @@ enum HTTPParserError : ErrorType {
   }
 }
 
-class HTTPParser {
-  let socket: Socket
 
-  init(socket: Socket) {
-    self.socket = socket
+class HTTPParser {
+  let reader: Unreader
+
+  init(reader: Readable) {
+    self.reader = Unreader(reader: reader)
   }
 
-  // Repeatedly read the socket, calling the predicate with the accumulated
-  // buffer to determine how many bytes to attempt to read next.
-  // Stops reading and returns the buffer when the predicate returns 0.
-  func readWhile(predicate: [CChar] -> Int) throws -> [CChar] {
-    var buffer: [CChar] = []
-
-    while true {
-      let nextSize = predicate(buffer)
-      guard nextSize > 0 else { break }
-
-      let bytes = try socket.read(nextSize)
-      guard !bytes.isEmpty else { break }
-
-      buffer += bytes
+  func readUntil(bytes: [Int8]) throws -> [Int8] {
+    if bytes.isEmpty {
+      return []
     }
 
-    return buffer
+    var buffer: [Int8] = []
+    while true {
+      let read = try reader.read(8192)
+      if read.isEmpty {
+        return []
+      }
+
+      buffer += read
+      if let (top, bottom) = buffer.find(bytes) {
+        reader.unread(bottom)
+        return top
+      }
+    }
   }
 
   // Read the socket until we find \r\n\r\n
-  // returning string before and chars after
-  func readHeaders() throws -> (String, [CChar]) {
-    var findResult: (top: [CChar], bottom: [CChar])?
-
+  func readHeaders() throws -> String {
     let crln: [CChar] = [13, 10, 13, 10]
-    try readWhile({ bytes in
-      if let (top, bottom) = bytes.find(crln) {
-        findResult = (top, bottom)
-        return 0
-      } else {
-        return 512
-      }
-    })
+    let buffer = try readUntil(crln)
 
-    guard let result = findResult else { throw HTTPParserError.Incomplete }
-
-    guard let headers = String.fromCString(result.top + [0]) else {
-      print("[worker] Failed to decode data from client")
-        throw HTTPParserError.Internal
+    if buffer.isEmpty {
+      throw HTTPParserError.Incomplete
     }
 
-    return (headers, result.bottom)
-  }
+    if let headers = String.fromCString(buffer + [0]) {
+      return headers
+    }
 
-  func readBody(maxLength maxLength: Int) throws -> [CChar] {
-    return try readWhile({ bytes in min(maxLength-bytes.count, 512) })
+    print("[worker] Failed to decode data from client")
+    throw HTTPParserError.Internal
   }
 
   func parse() throws -> RequestType {
-    let (top, startOfBody) = try readHeaders()
+    let top = try readHeaders()
     var components = top.split("\r\n")
     let requestLine = components.removeFirst()
     components.removeLast()
@@ -108,7 +98,7 @@ class HTTPParser {
 
     let headers = parseHeaders(components)
     let contentSize = headers.filter { $0.0.lowercaseString == "content-length" }.flatMap { Int($0.1) }.first
-    let payload = SocketPayload(socket: socket, buffer: startOfBody.map { UInt8($0) }, contentSize: contentSize)
+    let payload = ReaderPayload(reader: reader, contentSize: contentSize)
     return Request(method: method, path: path, headers: headers, content: payload)
   }
 
@@ -124,18 +114,6 @@ class HTTPParser {
 
       return nil
     }
-  }
-
-  func parseBody(bytes: [CChar], contentLength: Int) throws -> String {
-    guard bytes.count >= contentLength else { throw HTTPParserError.Incomplete }
-
-    let trimmedBytes = contentLength<bytes.count ? Array(bytes[0..<contentLength]) : bytes
-
-    guard let bodyString = String.fromCString(trimmedBytes + [0]) else {
-      print("[worker] Failed to decode message body from client")
-      throw HTTPParserError.Internal
-    }
-    return bodyString
   }
 }
 
@@ -241,15 +219,14 @@ extension String {
 }
 
 
-class SocketPayload : PayloadType, PayloadConvertible, GeneratorType {
-  let socket: Socket
-  var buffer: [UInt8]
+class ReaderPayload : PayloadType, PayloadConvertible, GeneratorType {
+  let reader: Readable
+  var buffer: [UInt8] = []
   let bufferSize: Int = 8192
   var remainingSize: Int?
 
-  init(socket: Socket, buffer: [UInt8], contentSize: Int? = nil) {
-    self.socket = socket
-    self.buffer = buffer
+  init(reader: Readable, contentSize: Int? = nil) {
+    self.reader = reader
     self.remainingSize = contentSize
   }
 
@@ -269,7 +246,7 @@ class SocketPayload : PayloadType, PayloadConvertible, GeneratorType {
     }
 
     let size = min(remainingSize ?? bufferSize, bufferSize)
-    if let bytes = try? socket.read(size) {
+    if let bytes = try? reader.read(size) {
       if let remainingSize = remainingSize {
         self.remainingSize = remainingSize - bytes.count
       }

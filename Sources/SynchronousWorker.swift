@@ -132,7 +132,7 @@ public final class SynchronousWorker : WorkerType {
   }
 
   func handle(client: Socket) {
-    let parser = HTTPParser(socket: client)
+    let parser = HTTPParser(reader: client)
 
     let response: ResponseType
 

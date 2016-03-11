@@ -63,6 +63,8 @@ final public class DispatchWorker :  WorkerType {
     socket.consume { [unowned self] (source, socket) in
       if let clientSocket = try? socket.accept() {
         // TODO: Handle socket asyncronously, use GCD to observe data
+
+        clientSocket.blocking = true
         self.handle(clientSocket)
       }
     }
@@ -79,8 +81,7 @@ final public class DispatchWorker :  WorkerType {
   }
 
   func handle(client: Socket) {
-    client.blocking = true
-    let parser = HTTPParser(socket: client)
+    let parser = HTTPParser(reader: client)
 
     let response: ResponseType
 

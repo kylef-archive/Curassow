@@ -46,8 +46,37 @@ struct SocketError : ErrorType, CustomStringConvertible {
 }
 
 
+protocol Readable {
+  func read(bytes: Int) throws -> [Int8]
+}
+
+
+class Unreader : Readable {
+  let reader: Readable
+  var buffer: [Int8] = []
+
+  init(reader: Readable) {
+    self.reader = reader
+  }
+
+  func read(bytes: Int) throws -> [Int8] {
+    if !buffer.isEmpty {
+      let buffer = self.buffer
+      self.buffer = []
+      return buffer
+    }
+
+    return try reader.read(bytes)
+  }
+
+  func unread(buffer: [Int8]) {
+    self.buffer += buffer
+  }
+}
+
+
 /// Represents a TCP AF_INET/AF_UNIX socket
-public final class Socket {
+public final class Socket : Readable {
   public typealias Descriptor = Int32
   typealias Port = UInt16
 

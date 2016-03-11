@@ -88,7 +88,6 @@ class HTTPParser {
     }
 
     let method = requestComponents[0]
-    // TODO path should be un-quoted
     let path = requestComponents[1]
     let version = requestComponents[2]
 

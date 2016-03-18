@@ -1,6 +1,7 @@
 #if os(OSX)
 import Darwin
 import Dispatch
+import fd
 import Nest
 import Inquiline
 
@@ -12,9 +13,9 @@ final public class DispatchWorker :  WorkerType {
   let notify: Void -> Void
   let application: RequestType -> ResponseType
 
-  public init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application) {
+  public init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: Void -> Void, application: Application) {
     self.logger = logger
-    self.listeners = listeners
+    self.listeners = listeners.map { Socket(descriptor: $0.fileNumber) }
     self.configuration = configuration
     self.notify = notify
     self.application = application
@@ -61,7 +62,8 @@ final public class DispatchWorker :  WorkerType {
 
   func registerSocketHandler(socket: Socket) {
     socket.consume { [unowned self] (source, socket) in
-      if let clientSocket = try? socket.accept() {
+      if let connection = try? socket.accept() {
+        let clientSocket = Socket(descriptor: connection.fileNumber)
         // TODO: Handle socket asyncronously, use GCD to observe data
 
         clientSocket.blocking = true
@@ -106,7 +108,7 @@ final public class DispatchWorker :  WorkerType {
 
 extension Socket {
   func consume(closure: (dispatch_source_t, Socket) -> ()) {
-    let source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, UInt(descriptor), 0, dispatch_get_main_queue())
+    let source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, UInt(fileNumber), 0, dispatch_get_main_queue())
 
     dispatch_source_set_event_handler(source) { [unowned self] in
       closure(source, self)

@@ -4,6 +4,7 @@ import Glibc
 import Darwin.C
 #endif
 
+import fd
 import Nest
 import Inquiline
 
@@ -22,7 +23,7 @@ public protocol WorkerType {
 
   NOTE: This is invoked from the master process
   */
-  init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application)
+  init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: Void -> Void, application: Application)
 
   /*** Runs the worker
   The implementation should start listening for requests on the listeners,

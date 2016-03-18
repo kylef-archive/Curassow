@@ -10,7 +10,7 @@ endif
 SPECS=Configuration HTTPParser Address
 SPEC_FILES=$(foreach spec,$(SPECS),Tests/$(spec)Spec.swift)
 
-RELEASE_LIBS=Curassow Commander Inquiline Nest
+RELEASE_LIBS=Curassow Commander Inquiline Nest fd
 DEBUG_LIBS=$(RELEASE_LIBS) Spectre
 
 DEBUG_SWIFT_ARGS=$(foreach lib,$(DEBUG_LIBS),-Xlinker .build/debug/$(lib).a)

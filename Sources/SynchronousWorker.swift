@@ -4,6 +4,7 @@ import Glibc
 import Darwin.C
 #endif
 
+import fd
 import Nest
 import Inquiline
 
@@ -23,10 +24,10 @@ public final class SynchronousWorker : WorkerType {
   var isAlive: Bool = false
   let parentPid: pid_t
 
-  public init(configuration: Configuration, logger: Logger, listeners: [Socket], notify: Void -> Void, application: Application) {
+  public init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: Void -> Void, application: Application) {
     self.parentPid = getpid()
     self.logger = logger
-    self.listeners = listeners
+    self.listeners = listeners.map { Socket(descriptor: $0.fileNumber) }
     self.configuration = configuration
     self.notify = notify
     self.application = application
@@ -90,7 +91,7 @@ public final class SynchronousWorker : WorkerType {
       notify()
 
       let sockets = wait().filter {
-        $0.descriptor != sharedHandler!.pipe.read.descriptor
+        $0.fileNumber != sharedHandler!.pipe.read.fileNumber
       }
 
       sockets.forEach(accept)
@@ -125,7 +126,8 @@ public final class SynchronousWorker : WorkerType {
   }
 
   func accept(listener: Socket) {
-    if let client = try? listener.accept() {
+    if let connection = try? listener.accept() {
+      let client = Socket(descriptor: connection.fileNumber)
       client.blocking = true
       handle(client)
     }

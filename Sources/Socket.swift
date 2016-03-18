@@ -30,6 +30,8 @@ private let system_select = Darwin.select
 private let system_pipe = Darwin.pipe
 #endif
 
+import fd
+
 
 struct SocketError : ErrorType, CustomStringConvertible {
   let function: String
@@ -76,11 +78,10 @@ class Unreader : Readable {
 
 
 /// Represents a TCP AF_INET/AF_UNIX socket
-public final class Socket : Readable {
-  public typealias Descriptor = Int32
+final public class Socket : Readable, FileDescriptor, Listener, Connection {
   typealias Port = UInt16
 
-  public let descriptor: Descriptor
+  public let fileNumber: FileNumber
 
   class func pipe() throws -> (read: Socket, write: Socket) {
     var fds: [Int32] = [0, 0]
@@ -92,30 +93,30 @@ public final class Socket : Readable {
 
   init(family: Int32 = AF_INET) throws {
 #if os(Linux)
-    descriptor = socket(family, sock_stream, 0)
+    fileNumber = socket(family, sock_stream, 0)
 #else
-    descriptor = socket(family, sock_stream, family == AF_UNIX ? 0 : IPPROTO_TCP)
+    fileNumber = socket(family, sock_stream, family == AF_UNIX ? 0 : IPPROTO_TCP)
 #endif
-    assert(descriptor > 0)
+    assert(fileNumber > 0)
 
     var value: Int32 = 1;
-    guard setsockopt(descriptor, SOL_SOCKET, SO_REUSEADDR, &value, socklen_t(sizeof(Int32))) != -1 else {
+    guard setsockopt(fileNumber, SOL_SOCKET, SO_REUSEADDR, &value, socklen_t(sizeof(Int32))) != -1 else {
       throw SocketError(function: "setsockopt()")
     }
 
 #if !os(Linux)
-    guard setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &value, socklen_t(sizeof(Int32))) != -1 else {
+    guard setsockopt(fileNumber, SOL_SOCKET, SO_NOSIGPIPE, &value, socklen_t(sizeof(Int32))) != -1 else {
         throw SocketError(function: "setsockopt()")
     }
 #endif
   }
 
-  init(descriptor: Descriptor) {
-    self.descriptor = descriptor
+  init(descriptor: FileNumber) {
+    self.fileNumber = descriptor
   }
 
   func listen(backlog: Int32) throws {
-    if system_listen(descriptor, backlog) == -1 {
+    if system_listen(fileNumber, backlog) == -1 {
       throw SocketError()
     }
   }
@@ -128,7 +129,7 @@ public final class Socket : Readable {
     addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
    let len = socklen_t(UInt8(sizeof(sockaddr_in)))
-    guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
+    guard system_bind(fileNumber, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }
   }
@@ -156,13 +157,13 @@ public final class Socket : Readable {
     let len = socklen_t(addr.sun_len)
 #endif
 
-    guard system_bind(descriptor, sockaddr_cast(&addr), len) != -1 else {
+    guard system_bind(fileNumber, sockaddr_cast(&addr), len) != -1 else {
       throw SocketError()
     }
   }
 
-  func accept() throws -> Socket {
-    let descriptor = system_accept(self.descriptor, nil, nil)
+  public func accept() throws -> Connection {
+    let descriptor = system_accept(fileNumber, nil, nil)
     if descriptor == -1 {
       throw SocketError()
     }
@@ -170,11 +171,11 @@ public final class Socket : Readable {
   }
 
   func close() {
-    system_close(descriptor)
+    system_close(fileNumber)
   }
 
   func shutdown() {
-    system_shutdown(descriptor, Int32(SHUT_RDWR))
+    system_shutdown(fileNumber, Int32(SHUT_RDWR))
   }
 
   func send(output: String) {
@@ -184,7 +185,7 @@ public final class Socket : Readable {
 #else
     let flags = Int32(0)
 #endif
-      system_send(descriptor, bytes, Int(strlen(bytes)), flags)
+      system_send(fileNumber, bytes, Int(strlen(bytes)), flags)
     }
   }
 
@@ -194,18 +195,18 @@ public final class Socket : Readable {
 #else
     let flags = Int32(0)
 #endif
-    system_send(descriptor, bytes, bytes.count, flags)
+    system_send(fileNumber, bytes, bytes.count, flags)
   }
 
   func write(output: String) {
     output.withCString { bytes in
-      system_write(descriptor, bytes, Int(strlen(bytes)))
+      system_write(fileNumber, bytes, Int(strlen(bytes)))
     }
   }
 
   func read(bytes: Int) throws -> [CChar] {
     let data = Data(capacity: bytes)
-    let bytes = system_read(descriptor, data.bytes, data.capacity)
+    let bytes = system_read(fileNumber, data.bytes, data.capacity)
     guard bytes != -1 else {
         throw SocketError()
     }
@@ -215,12 +216,12 @@ public final class Socket : Readable {
   /// Returns whether the socket is set to non-blocking or blocking
   var blocking: Bool {
     get {
-      let flags = fcntl(descriptor, F_GETFL, 0)
+      let flags = fcntl(fileNumber, F_GETFL, 0)
       return flags & O_NONBLOCK == 0
     }
 
     set {
-      let flags = fcntl(descriptor, F_GETFL, 0)
+      let flags = fcntl(fileNumber, F_GETFL, 0)
       let newFlags: Int32
 
       if newValue {
@@ -229,19 +230,19 @@ public final class Socket : Readable {
         newFlags = flags | O_NONBLOCK
       }
 
-      let _ = fcntl(descriptor, F_SETFL, newFlags)
+      let _ = fcntl(fileNumber, F_SETFL, newFlags)
     }
   }
 
   /// Returns whether the socket is has the FD_CLOEXEC flag set
   var closeOnExec: Bool {
     get {
-      let flags = fcntl(descriptor, F_GETFL, 0)
+      let flags = fcntl(fileNumber, F_GETFL, 0)
       return flags & FD_CLOEXEC == 1
     }
 
     set {
-      let flags = fcntl(descriptor, F_GETFL, 0)
+      let flags = fcntl(fileNumber, F_GETFL, 0)
       let newFlags: Int32
 
       if newValue {
@@ -250,7 +251,7 @@ public final class Socket : Readable {
         newFlags = flags | FD_CLOEXEC
       }
 
-      let _ = fcntl(descriptor, F_SETFL, newFlags)
+      let _ = fcntl(fileNumber, F_SETFL, newFlags)
     }
   }
 
@@ -266,7 +267,7 @@ public final class Socket : Readable {
 
 func filter(sockets: [Socket], inout _ set: fd_set) -> [Socket] {
   return sockets.filter {
-    fdIsSet($0.descriptor, &set)
+    fdIsSet($0.fileNumber, &set)
   }
 }
 
@@ -276,17 +277,17 @@ func select(reads: [Socket], _ writes: [Socket], _ errors: [Socket], timeout: ti
 
   var readFDs = fd_set()
   fdZero(&readFDs)
-  reads.forEach { fdSet($0.descriptor, &readFDs) }
+  reads.forEach { fdSet($0.fileNumber, &readFDs) }
 
   var writeFDs = fd_set()
   fdZero(&writeFDs)
-  writes.forEach { fdSet($0.descriptor, &writeFDs) }
+  writes.forEach { fdSet($0.fileNumber, &writeFDs) }
 
   var errorFDs = fd_set()
   fdZero(&errorFDs)
-  errors.forEach { fdSet($0.descriptor, &errorFDs) }
+  errors.forEach { fdSet($0.fileNumber, &errorFDs) }
 
-  let maxFD = (reads + writes + errors).map { $0.descriptor }.reduce(0, combine: max)
+  let maxFD = (reads + writes + errors).map { $0.fileNumber }.reduce(0, combine: max)
   let result = system_select(maxFD + 1, &readFDs, &writeFDs, &errorFDs, &timeout)
 
   if result == 0 {

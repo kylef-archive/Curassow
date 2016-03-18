@@ -121,8 +121,8 @@ public final class SynchronousWorker : WorkerType {
       timeout = timeval(tv_sec: 120, tv_usec: 0)
     }
 
-    let (read, _, _) = select(listeners + [sharedHandler!.pipe.read], [], [], timeout: timeout)
-    return read
+    let result = try? select(reads: listeners + [sharedHandler!.pipe.read], timeout: timeout)
+    return result?.reads ?? []
   }
 
   func accept(listener: Socket) {

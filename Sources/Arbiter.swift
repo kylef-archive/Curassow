@@ -6,6 +6,7 @@ import Darwin.C
 @_silgen_name("fork") private func system_fork() -> Int32
 #endif
 
+import fd
 import Nest
 
 
@@ -114,7 +115,8 @@ public final class Arbiter<Worker : WorkerType> {
       timeout = timeval(tv_sec: 30, tv_usec: 0)
     }
 
-    let (read, _, _) = select([signalHandler.pipe.read], [], [], timeout: timeout)
+    let result = try? select(reads: [signalHandler.pipe.read], timeout: timeout)
+    let read = result?.reads ?? []
 
     if !read.isEmpty {
       do {

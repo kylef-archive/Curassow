@@ -240,7 +240,7 @@ class ReaderPayload : PayloadType, PayloadConvertible, GeneratorType {
       return buffer
     }
 
-    if let remainingSize = remainingSize where remainingSize < 0 {
+    if let remainingSize = remainingSize where remainingSize <= 0 {
       return nil
     }
 

@@ -23,16 +23,16 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
   let flag: Character?
   let description: String?
   let `default`: ValueType
-  var type: ArgumentType { return .Option }
+  var type: ArgumentType { return .option }
 
-  init(_ name: String, _ `default`: ValueType, flag: Character? = nil, description: String? = nil) {
+  init(_ name: String, _ default: ValueType, flag: Character? = nil, description: String? = nil) {
     self.name = name
     self.flag = flag
     self.description = description
     self.`default` = `default`
   }
 
-  func parse(parser: ArgumentParser) throws -> ValueType {
+  func parse(_ parser: ArgumentParser) throws -> ValueType {
     var options: ValueType = []
 
     while let value = try parser.shiftValueForOption(name) {
@@ -56,10 +56,10 @@ class MultiOption<T : ArgumentConvertible> : ArgumentDescriptor {
 }
 
 
-func getIntEnv(key: String, `default`: Int) -> Int {
+func getIntEnv(_ key: String, default: Int) -> Int {
   let value = getenv(key)
   if value != nil {
-    if let stringValue = String.fromCString(value), intValue = Int(stringValue) {
+    if let stringValue = String(validatingUTF8: value!), let intValue = Int(stringValue) {
       return intValue
     }
   }
@@ -68,7 +68,7 @@ func getIntEnv(key: String, `default`: Int) -> Int {
 }
 
 
-struct ServeError : ErrorType, CustomStringConvertible {
+struct ServeError : Error, CustomStringConvertible {
   let description: String
 
   init(_ description: String) {
@@ -77,14 +77,14 @@ struct ServeError : ErrorType, CustomStringConvertible {
 }
 
 
-@noreturn public func serve(closure: RequestType -> ResponseType) {
+public func serve(_ closure: @escaping (RequestType) -> ResponseType) -> Never  {
   let port = UInt16(getIntEnv("PORT", default: 8000))
   let workers = getIntEnv("WEB_CONCURRENCY", default: 1)
 
   command(
     Option("worker-type", "sync"),
     Option("workers", workers, description: "The number of processes for handling requests."),
-    MultiOption("bind", [Address.IP(hostname: "0.0.0.0", port: port)], description: "The address to bind sockets."),
+    MultiOption("bind", [Address.ip(hostname: "0.0.0.0", port: port)], description: "The address to bind sockets."),
     Option("timeout", 30, description: "Amount of seconds to wait on a worker without activity before killing and restarting the worker."),
     Flag("daemon", description: "Detaches the server from the controlling terminal and enter the background.")
   ) { workerType, workers, addresses, timeout, daemonize in
@@ -103,7 +103,7 @@ struct ServeError : ErrorType, CustomStringConvertible {
       throw ServeError("The dispatch worker is only supported on OS X")
 #endif
     } else {
-      throw ArgumentError.InvalidType(value: workerType, type: "worker type", argument: "worker-type")
+      throw ArgumentError.invalidType(value: workerType, type: "worker type", argument: "worker-type")
     }
   }.run()
 }

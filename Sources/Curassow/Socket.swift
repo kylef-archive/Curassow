@@ -33,11 +33,11 @@ private let system_pipe = Darwin.pipe
 import fd
 
 
-struct SocketError : ErrorType, CustomStringConvertible {
+struct SocketError : Error, CustomStringConvertible {
   let function: String
   let number: Int32
 
-  init(function: String = __FUNCTION__) {
+  init(function: String = #function) {
     self.function = function
     self.number = errno
   }
@@ -49,7 +49,7 @@ struct SocketError : ErrorType, CustomStringConvertible {
 
 
 protocol Readable {
-  func read(bytes: Int) throws -> [Int8]
+  func read(_ bytes: Int) throws -> [Int8]
 }
 
 
@@ -61,7 +61,7 @@ class Unreader : Readable {
     self.reader = reader
   }
 
-  func read(bytes: Int) throws -> [Int8] {
+  func read(_ bytes: Int) throws -> [Int8] {
     if !buffer.isEmpty {
       let buffer = self.buffer
       self.buffer = []
@@ -71,7 +71,7 @@ class Unreader : Readable {
     return try reader.read(bytes)
   }
 
-  func unread(buffer: [Int8]) {
+  func unread(_ buffer: [Int8]) {
     self.buffer += buffer
   }
 }
@@ -100,12 +100,12 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
     assert(fileNumber > 0)
 
     var value: Int32 = 1;
-    guard setsockopt(fileNumber, SOL_SOCKET, SO_REUSEADDR, &value, socklen_t(sizeof(Int32))) != -1 else {
+    guard setsockopt(fileNumber, SOL_SOCKET, SO_REUSEADDR, &value, socklen_t(MemoryLayout<Int32>.size)) != -1 else {
       throw SocketError(function: "setsockopt()")
     }
 
 #if !os(Linux)
-    guard setsockopt(fileNumber, SOL_SOCKET, SO_NOSIGPIPE, &value, socklen_t(sizeof(Int32))) != -1 else {
+    guard setsockopt(fileNumber, SOL_SOCKET, SO_NOSIGPIPE, &value, socklen_t(MemoryLayout<Int32>.size)) != -1 else {
         throw SocketError(function: "setsockopt()")
     }
 #endif
@@ -115,50 +115,54 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
     self.fileNumber = descriptor
   }
 
-  func listen(backlog: Int32) throws {
+  func listen(_ backlog: Int32) throws {
     if system_listen(fileNumber, backlog) == -1 {
       throw SocketError()
     }
   }
 
-  func bind(address: String, port: Port) throws {
+  func bind(_ address: String, port: Port) throws {
     var addr = sockaddr_in()
     addr.sin_family = sa_family_t(AF_INET)
     addr.sin_port = in_port_t(htons(in_port_t(port)))
     addr.sin_addr = in_addr(s_addr: address.withCString { inet_addr($0) })
     addr.sin_zero = (0, 0, 0, 0, 0, 0, 0, 0)
 
-   let len = socklen_t(UInt8(sizeof(sockaddr_in)))
-    guard system_bind(fileNumber, sockaddr_cast(&addr), len) != -1 else {
-      throw SocketError()
+    let len = socklen_t(UInt8(MemoryLayout<sockaddr_in>.size))
+
+    try withUnsafePointer(to: &addr) {
+        try $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            guard system_bind(fileNumber, $0, len) != -1 else {
+                throw SocketError()
+            }
+        }
     }
   }
 
-  func bind(path: String) throws {
+  func bind(_ path: String) throws {
     var addr = sockaddr_un()
     addr.sun_family = sa_family_t(AF_UNIX)
 
     let lengthOfPath = path.withCString { Int(strlen($0)) }
 
-    guard lengthOfPath < sizeofValue(addr.sun_path) else {
-      throw SocketError()
+    guard lengthOfPath < MemoryLayout.size(ofValue: addr.sun_path) else {
+        throw SocketError()
     }
 
-    withUnsafeMutablePointer(&addr.sun_path.0) { ptr in
-      path.withCString {
-        strncpy(ptr, $0, lengthOfPath)
-      }
+    addr.sun_len = UInt8(MemoryLayout<sockaddr_un>.size - MemoryLayout.size(ofValue: addr.sun_path) + lengthOfPath)
+
+    _ = withUnsafeMutablePointer(to: &addr.sun_path.0) { ptr in
+        path.withCString {
+            strncpy(ptr, $0, lengthOfPath)
+        }
     }
 
-#if os(Linux)
-    let len = socklen_t(UInt8(sizeof(sockaddr_un)))
-#else
-    addr.sun_len = UInt8(sizeof(sockaddr_un) - sizeofValue(addr.sun_path) + lengthOfPath)
-    let len = socklen_t(addr.sun_len)
-#endif
-
-    guard system_bind(fileNumber, sockaddr_cast(&addr), len) != -1 else {
-      throw SocketError()
+    try withUnsafePointer(to: &addr) {
+        try $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            guard system_bind(fileNumber, $0, UInt32(MemoryLayout<sockaddr_un>.stride)) != -1 else {
+                throw SocketError()
+            }
+        }
     }
   }
 
@@ -171,40 +175,40 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
   }
 
   func close() {
-    system_close(fileNumber)
+    _ = system_close(fileNumber)
   }
 
   func shutdown() {
-    system_shutdown(fileNumber, Int32(SHUT_RDWR))
+    _ = system_shutdown(fileNumber, Int32(SHUT_RDWR))
   }
 
-  func send(output: String) {
+  func send(_ output: String) {
     output.withCString { bytes in
 #if os(Linux)
     let flags = Int32(MSG_NOSIGNAL)
 #else
     let flags = Int32(0)
 #endif
-      system_send(fileNumber, bytes, Int(strlen(bytes)), flags)
+      _ = system_send(fileNumber, bytes, Int(strlen(bytes)), flags)
     }
   }
 
-  func send(bytes: [UInt8]) {
+  func send(_ bytes: [UInt8]) {
 #if os(Linux)
     let flags = Int32(MSG_NOSIGNAL)
 #else
     let flags = Int32(0)
 #endif
-    system_send(fileNumber, bytes, bytes.count, flags)
+    _ = system_send(fileNumber, bytes, bytes.count, flags)
   }
 
-  func write(output: String) {
-    output.withCString { bytes in
+  func write(_ output: String) {
+    _ = output.withCString { bytes in
       system_write(fileNumber, bytes, Int(strlen(bytes)))
     }
   }
 
-  func read(bytes: Int) throws -> [CChar] {
+  func read(_ bytes: Int) throws -> [CChar] {
     let data = Data(capacity: bytes)
     let bytes = system_read(fileNumber, data.bytes, data.capacity)
     guard bytes != -1 else {
@@ -255,11 +259,7 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
     }
   }
 
-  private func htons(value: CUnsignedShort) -> CUnsignedShort {
+  fileprivate func htons(_ value: CUnsignedShort) -> CUnsignedShort {
     return (value << 8) + (value >> 8)
-  }
-
-  private func sockaddr_cast(p: UnsafeMutablePointer<Void>) -> UnsafeMutablePointer<sockaddr> {
-    return UnsafeMutablePointer<sockaddr>(p)
   }
 }

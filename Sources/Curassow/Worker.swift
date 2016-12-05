@@ -9,7 +9,7 @@ import Nest
 import Inquiline
 
 
-public typealias Application = RequestType -> ResponseType
+public typealias Application = (RequestType) -> ResponseType
 
 
 public protocol WorkerType {
@@ -23,7 +23,7 @@ public protocol WorkerType {
 
   NOTE: This is invoked from the master process
   */
-  init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: Void -> Void, application: Application)
+  init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: @escaping (Void) -> Void, application: @escaping Application)
 
   /*** Runs the worker
   The implementation should start listening for requests on the listeners,
@@ -47,10 +47,10 @@ final class WorkerProcess {
 }
 
 
-func getenv(key: String, `default`: String) -> String {
+func getenv(_ key: String, default: String) -> String {
   let result = getenv(key)
   if result != nil {
-    if let value = String.fromCString(result) {
+    if let value = String(validatingUTF8: result!) {
       return value
     }
   }
@@ -74,7 +74,7 @@ class WorkerTemp {
 
     let template = "\(tempdir)/curassow.XXXXXXXX"
     var templateChars = Array(template.utf8).map { Int8($0) } + [0]
-    descriptor = withUnsafeMutablePointer(&templateChars[0]) { buffer -> Int32 in
+    descriptor = withUnsafeMutablePointer(to: &templateChars[0]) { buffer -> Int32 in
       return mkstemp(buffer)
     }
 

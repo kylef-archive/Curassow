@@ -8,26 +8,26 @@ import Nest
 import Inquiline
 
 
-enum HTTPParserError : ErrorType {
-  case BadSyntax(String)
-  case BadVersion(String)
-  case Incomplete
-  case Internal
+enum HTTPParserError : Error {
+  case badSyntax(String)
+  case badVersion(String)
+  case incomplete
+  case `internal`
 
   func response() -> ResponseType {
-    func error(status: Status, message: String) -> ResponseType {
+    func error(_ status: Status, message: String) -> ResponseType {
       return Response(status, contentType: "text/plain", content: message)
     }
 
     switch self {
-    case let .BadSyntax(syntax):
-      return error(.BadRequest, message: "Bad Syntax (\(syntax))")
-    case let .BadVersion(version):
-      return error(.BadRequest, message: "Bad Version (\(version))")
-    case .Incomplete:
-      return error(.BadRequest, message: "Incomplete HTTP Request")
-    case .Internal:
-      return error(.InternalServerError, message: "Internal Server Error")
+    case let .badSyntax(syntax):
+      return error(.badRequest, message: "Bad Syntax (\(syntax))")
+    case let .badVersion(version):
+      return error(.badRequest, message: "Bad Version (\(version))")
+    case .incomplete:
+      return error(.badRequest, message: "Incomplete HTTP Request")
+    case .internal:
+      return error(.internalServerError, message: "Internal Server Error")
     }
   }
 }
@@ -40,7 +40,7 @@ class HTTPParser {
     self.reader = Unreader(reader: reader)
   }
 
-  func readUntil(bytes: [Int8]) throws -> [Int8] {
+  func readUntil(_ bytes: [Int8]) throws -> [Int8] {
     if bytes.isEmpty {
       return []
     }
@@ -66,25 +66,25 @@ class HTTPParser {
     let buffer = try readUntil(crln)
 
     if buffer.isEmpty {
-      throw HTTPParserError.Incomplete
+      throw HTTPParserError.incomplete
     }
 
-    if let headers = String.fromCString(buffer + [0]) {
+    if let headers = String(validatingUTF8: (buffer + [0])) {
       return headers
     }
 
     print("[worker] Failed to decode data from client")
-    throw HTTPParserError.Internal
+    throw HTTPParserError.internal
   }
 
   func parse() throws -> RequestType {
     let top = try readHeaders()
-    var components = top.split("\r\n")
+    var components = top.split(separator: "\r\n")
     let requestLine = components.removeFirst()
     components.removeLast()
-    let requestComponents = requestLine.split(" ")
+    let requestComponents = requestLine.split(separator: " ")
     if requestComponents.count != 3 {
-      throw HTTPParserError.BadSyntax(requestLine)
+      throw HTTPParserError.badSyntax(requestLine)
     }
 
     let method = requestComponents[0]
@@ -92,23 +92,27 @@ class HTTPParser {
     let version = requestComponents[2]
 
     if !version.hasPrefix("HTTP/1") {
-      throw HTTPParserError.BadVersion(version)
+      throw HTTPParserError.badVersion(version)
     }
 
     let headers = parseHeaders(components)
-    let contentSize = headers.filter { $0.0.lowercaseString == "content-length" }.flatMap { Int($0.1) }.first
+    let contentSize = headers.filter { $0.0.lowercased() == "content-length" }.flatMap { Int($0.1) }.first
     let payload = ReaderPayload(reader: reader, contentSize: contentSize)
     return Request(method: method, path: path, headers: headers, content: payload)
   }
 
-  func parseHeaders(headers: [String]) -> [Header] {
-    return headers.map { $0.split(":", maxSeparator: 1) }.flatMap {
+  func parseHeaders(_ headers: [String]) -> [Header] {
+    return headers.map { $0.split(separator: ":", maxSeparator: 1) }.flatMap {
       if $0.count == 2 {
-        if $0[1].characters.first == " " {
-          let value = String($0[1].characters[$0[1].startIndex.successor()..<$0[1].endIndex])
-          return ($0[0], value)
+        let key = $0[0]
+        var value = $0[1]
+
+        if value.hasPrefix(" ") {
+          value.remove(at: value.startIndex)
+          return (key, value)
         }
-        return ($0[0], $0[1])
+
+        return (key, value)
       }
 
       return nil
@@ -117,13 +121,13 @@ class HTTPParser {
 }
 
 
-extension CollectionType where Generator.Element == CChar {
-  func find(characters: [CChar]) -> ([CChar], [CChar])? {
+extension Collection where Iterator.Element == CChar {
+  fileprivate func find(_ characters: [CChar]) -> ([CChar], [CChar])? {
     var lhs: [CChar] = []
     var rhs = Array(self)
 
     while !rhs.isEmpty {
-      let character = rhs.removeAtIndex(0)
+      let character = rhs.remove(at: 0)
       lhs.append(character)
       if lhs.hasSuffix(characters) {
         return (lhs, rhs)
@@ -133,7 +137,7 @@ extension CollectionType where Generator.Element == CChar {
     return nil
   }
 
-  func hasSuffix(characters: [CChar]) -> Bool {
+  fileprivate func hasSuffix(_ characters: [CChar]) -> Bool {
     let chars = Array(self)
     if chars.count >= characters.count {
       let index = chars.count - characters.count
@@ -146,7 +150,7 @@ extension CollectionType where Generator.Element == CChar {
 
 
 extension String {
-  func split(separator: String, maxSeparator: Int = Int.max) -> [String] {
+  fileprivate func split(separator: String, maxSeparator: Int = Int.max) -> [String] {
     let scanner = Scanner(self)
     var components: [String] = []
     var scans = 0
@@ -161,7 +165,7 @@ extension String {
 }
 
 
-class Scanner {
+fileprivate class Scanner {
   var content: String
 
   init(_ content: String) {
@@ -172,7 +176,7 @@ class Scanner {
     return content.characters.count == 0
   }
 
-  func scan(until until: String) -> String {
+  func scan(until: String) -> String {
     if until.isEmpty {
       return ""
     }
@@ -186,7 +190,7 @@ class Scanner {
       characters.append(character)
 
       if content.hasPrefix(until) {
-        let index = content.characters.startIndex.advancedBy(until.characters.count)
+        let index = content.characters.index(content.characters.startIndex, offsetBy: until.characters.count)
         content = String(content.characters[index..<content.characters.endIndex])
         break
       }
@@ -197,7 +201,7 @@ class Scanner {
 }
 
 extension String {
-  func hasPrefix(prefix: String) -> Bool {
+  func hasPrefix(_ prefix: String) -> Bool {
     let characters = utf16
     let prefixCharacters = prefix.utf16
     let start = characters.startIndex
@@ -208,7 +212,10 @@ extension String {
     }
 
     for idx in 0..<prefixCharacters.count {
-      if characters[start.advancedBy(idx)] != prefixCharacters[prefixStart.advancedBy(idx)] {
+      let charactersIndex = characters.index(start, offsetBy: idx)
+      let prefixIndex = characters.index(prefixStart, offsetBy: idx)
+
+      if characters[charactersIndex] != prefixCharacters[prefixIndex] {
         return false
       }
     }
@@ -218,7 +225,7 @@ extension String {
 }
 
 
-class ReaderPayload : PayloadType, PayloadConvertible, GeneratorType {
+class ReaderPayload : PayloadType, PayloadConvertible, IteratorProtocol {
   let reader: Readable
   var buffer: [UInt8] = []
   let bufferSize: Int = 8192
@@ -240,7 +247,7 @@ class ReaderPayload : PayloadType, PayloadConvertible, GeneratorType {
       return buffer
     }
 
-    if let remainingSize = remainingSize where remainingSize < 0 {
+    if let remainingSize = remainingSize, remainingSize < 0 {
       return nil
     }
 

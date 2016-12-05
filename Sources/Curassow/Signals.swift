@@ -8,21 +8,21 @@ var sharedHandler: SignalHandler?
 
 class SignalHandler {
   enum Signal {
-    case Interrupt
-    case Quit
-    case TTIN
-    case TTOU
-    case Terminate
-    case Child
+    case interrupt
+    case quit
+    case ttin
+    case ttou
+    case terminate
+    case child
   }
 
   class func registerSignals() {
-    signal(SIGTERM) { _ in sharedHandler?.handle(.Terminate) }
-    signal(SIGINT) { _ in sharedHandler?.handle(.Interrupt) }
-    signal(SIGQUIT) { _ in sharedHandler?.handle(.Quit) }
-    signal(SIGTTIN) { _ in sharedHandler?.handle(.TTIN) }
-    signal(SIGTTOU) { _ in sharedHandler?.handle(.TTOU) }
-    signal(SIGCHLD) { _ in sharedHandler?.handle(.Child) }
+    signal(SIGTERM) { _ in sharedHandler?.handle(.terminate) }
+    signal(SIGINT) { _ in sharedHandler?.handle(.interrupt) }
+    signal(SIGQUIT) { _ in sharedHandler?.handle(.quit) }
+    signal(SIGTTIN) { _ in sharedHandler?.handle(.ttin) }
+    signal(SIGTTOU) { _ in sharedHandler?.handle(.ttou) }
+    signal(SIGCHLD) { _ in sharedHandler?.handle(.child) }
   }
 
   class func reset() {
@@ -50,13 +50,13 @@ class SignalHandler {
     pipe.write.send(".")
   }
 
-  func handle(signal: Signal) {
+  func handle(_ signal: Signal) {
     signalQueue.append(signal)
     wakeup()
   }
 
   var callbacks: [Signal: () -> ()] = [:]
-  func register(signal: Signal, _ callback: () -> ()) {
+  func register(_ signal: Signal, _ callback: @escaping () -> ()) {
     callbacks[signal] = callback
   }
 

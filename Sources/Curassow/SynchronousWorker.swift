@@ -18,13 +18,13 @@ public final class SynchronousWorker : WorkerType {
     return configuration.timeout / 2
   }
 
-  let notify: Void -> Void
+  let notify: (Void) -> Void
 
-  let application: RequestType -> ResponseType
+  let application: (RequestType) -> ResponseType
   var isAlive: Bool = false
   let parentPid: pid_t
 
-  public init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: Void -> Void, application: Application) {
+  public init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: @escaping (Void) -> Void, application: @escaping Application) {
     self.parentPid = getpid()
     self.logger = logger
     self.listeners = listeners.map { Socket(descriptor: $0.fileNumber) }
@@ -35,9 +35,9 @@ public final class SynchronousWorker : WorkerType {
 
   func registerSignals() throws {
     let signals = try SignalHandler()
-    signals.register(.Interrupt, handleQuit)
-    signals.register(.Quit, handleQuit)
-    signals.register(.Terminate, handleTerminate)
+    signals.register(.interrupt, handleQuit)
+    signals.register(.quit, handleQuit)
+    signals.register(.terminate, handleTerminate)
     sharedHandler = signals
     SignalHandler.registerSignals()
   }
@@ -71,7 +71,7 @@ public final class SynchronousWorker : WorkerType {
     return true
   }
 
-  func runOne(listener: Socket) {
+  func runOne(_ listener: Socket) {
     while isAlive {
       sharedHandler?.process()
       notify()
@@ -85,7 +85,7 @@ public final class SynchronousWorker : WorkerType {
     }
   }
 
-  func runMultiple(listeners: [Socket]) {
+  func runMultiple(_ listeners: [Socket]) {
     while isAlive {
       sharedHandler?.process()
       notify()
@@ -121,11 +121,12 @@ public final class SynchronousWorker : WorkerType {
       timeout = timeval(tv_sec: 120, tv_usec: 0)
     }
 
-    let result = try? select(reads: listeners + [sharedHandler!.pipe.read], timeout: timeout)
+    let socks = listeners + [sharedHandler!.pipe.read]
+    let result = try? fd.select(reads: socks, writes: [Socket](), errors: [Socket](), timeout: timeout)
     return result?.reads ?? []
   }
 
-  func accept(listener: Socket) {
+  func accept(_ listener: Socket) {
     if let connection = try? listener.accept() {
       let client = Socket(descriptor: connection.fileNumber)
       client.blocking = true
@@ -133,7 +134,7 @@ public final class SynchronousWorker : WorkerType {
     }
   }
 
-  func handle(client: Socket) {
+  func handle(_ client: Socket) {
     let parser = HTTPParser(reader: client)
 
     let response: ResponseType
@@ -146,7 +147,7 @@ public final class SynchronousWorker : WorkerType {
       response = error.response()
     } catch {
       print("[worker] Unknown error: \(error)")
-      response = Response(.InternalServerError, contentType: "text/plain", content: "Internal Server Error")
+      response = Response(.internalServerError, contentType: "text/plain", content: "Internal Server Error")
     }
 
     sendResponse(client, response: response)
@@ -157,7 +158,7 @@ public final class SynchronousWorker : WorkerType {
 }
 
 
-func sendResponse(client: Socket, response: ResponseType) {
+func sendResponse(_ client: Socket, response: ResponseType) {
   client.send("HTTP/1.1 \(response.statusLine)\r\n")
   client.send("Connection: close\r\n")
 

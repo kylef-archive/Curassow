@@ -10,10 +10,10 @@ final public class DispatchWorker :  WorkerType {
   let configuration: Configuration
   let logger: Logger
   let listeners: [Socket]
-  let notify: Void -> Void
-  let application: RequestType -> ResponseType
+  let notify: (Void) -> Void
+  let application: (RequestType) -> ResponseType
 
-  public init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: Void -> Void, application: Application) {
+  public init(configuration: Configuration, logger: Logger, listeners: [Listener], notify: @escaping (Void) -> Void, application: @escaping Application) {
     self.logger = logger
     self.listeners = listeners.map { Socket(descriptor: $0.fileNumber) }
     self.configuration = configuration
@@ -25,34 +25,34 @@ final public class DispatchWorker :  WorkerType {
     logger.info("Booting worker process with pid: \(getpid())")
 
     let timerSource = configureTimer()
-    dispatch_resume(timerSource)
+    timerSource.resume()
 
     listeners.forEach(registerSocketHandler)
 
     // Gracefully shutdown
     signal(SIGTERM, SIG_IGN)
-    let terminateSignal = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, UInt(SIGTERM), 0, dispatch_get_main_queue())
-    dispatch_source_set_event_handler(terminateSignal) { [unowned self] in
-      self.exitWorker()
+    let terminateSignal = DispatchSource.makeSignalSource(signal: SIGTERM, queue: DispatchQueue.main)
+    terminateSignal.setEventHandler { [unowned self] in
+        self.exitWorker()
     }
-    dispatch_resume(terminateSignal)
+    terminateSignal.resume()
 
     // Quick shutdown
     signal(SIGQUIT, SIG_IGN)
-    let quitSignal = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, UInt(SIGQUIT), 0, dispatch_get_main_queue())
-    dispatch_source_set_event_handler(quitSignal) { [unowned self] in
+    let quitSignal = DispatchSource.makeSignalSource(signal: SIGQUIT, queue: DispatchQueue.main)
+    quitSignal.setEventHandler { [unowned self] in
       self.exitWorker()
     }
-    dispatch_resume(quitSignal)
+    quitSignal.resume()
 
     signal(SIGINT, SIG_IGN)
-    let interruptSignal = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, UInt(SIGINT), 0, dispatch_get_main_queue())
-    dispatch_source_set_event_handler(interruptSignal) { [unowned self] in
+    let interruptSignal = DispatchSource.makeSignalSource(signal: SIGINT, queue: DispatchQueue.main)
+    interruptSignal.setEventHandler { [unowned self] in
       self.exitWorker()
     }
-    dispatch_resume(interruptSignal)
+    interruptSignal.resume()
 
-    dispatch_main()
+    dispatchMain()
   }
 
   func exitWorker() {
@@ -67,19 +67,20 @@ final public class DispatchWorker :  WorkerType {
         // TODO: Handle socket asyncronously, use GCD to observe data
 
         clientSocket.blocking = true
-        self.handle(clientSocket)
+        self.handle(client: clientSocket)
       }
     }
   }
 
-  func configureTimer() -> dispatch_source_t {
-    let source = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue())
-    dispatch_source_set_timer(source, 0, UInt64(configuration.timeout) / 2 * NSEC_PER_SEC, 0)
-    dispatch_source_set_event_handler(source) { [unowned self] in
+  func configureTimer() -> DispatchSourceTimer {
+    let timer = DispatchSource.makeTimerSource()
+    timer.scheduleRepeating(deadline: .now(), interval: .seconds(configuration.timeout / 2))
+
+    timer.setEventHandler { [unowned self] in
       self.notify()
     }
 
-    return source
+    return timer
   }
 
   func handle(client: Socket) {
@@ -95,7 +96,7 @@ final public class DispatchWorker :  WorkerType {
       response = error.response()
     } catch {
       print("[worker] Unknown error: \(error)")
-      response = Response(.InternalServerError, contentType: "text/plain", content: "Internal Server Error")
+      response = Response(.internalServerError, contentType: "text/plain", content: "Internal Server Error")
     }
 
     sendResponse(client, response: response)
@@ -107,18 +108,18 @@ final public class DispatchWorker :  WorkerType {
 
 
 extension Socket {
-  func consume(closure: (dispatch_source_t, Socket) -> ()) {
-    let source = dispatch_source_create(DISPATCH_SOURCE_TYPE_READ, UInt(fileNumber), 0, dispatch_get_main_queue())
+  func consume(closure: @escaping (DispatchSourceRead, Socket) -> ()) {
+    let source = DispatchSource.makeReadSource(fileDescriptor: fileNumber)
 
-    dispatch_source_set_event_handler(source) { [unowned self] in
+    source.setEventHandler { [unowned self] in
       closure(source, self)
     }
 
-    dispatch_source_set_cancel_handler(source) {
+    source.setCancelHandler { [unowned self] in
       self.close()
     }
 
-    dispatch_resume(source)
+    source.resume()
   }
 /*
   func consumeData(closure: (Socket, Data) -> ()) {

@@ -19,11 +19,11 @@ public final class Arbiter<Worker : WorkerType> {
 
   var numberOfWorkers: Int
 
-  let application: RequestType -> ResponseType
+  let application: (RequestType) -> ResponseType
 
   var signalHandler: SignalHandler!
 
-  public init(configuration: Configuration, workers: Int, application: Application) {
+  public init(configuration: Configuration, workers: Int, application: @escaping Application) {
     self.configuration = configuration
     self.numberOfWorkers = workers
     self.application = application
@@ -38,12 +38,12 @@ public final class Arbiter<Worker : WorkerType> {
 
   func registerSignals() throws {
     signalHandler = try SignalHandler()
-    signalHandler.register(.Interrupt, handleINT)
-    signalHandler.register(.Quit, handleQUIT)
-    signalHandler.register(.Terminate, handleTerminate)
-    signalHandler.register(.TTIN, handleTTIN)
-    signalHandler.register(.TTOU, handleTTOU)
-    signalHandler.register(.Child, handleChild)
+    signalHandler.register(.interrupt, handleINT)
+    signalHandler.register(.quit, handleQUIT)
+    signalHandler.register(.terminate, handleTerminate)
+    signalHandler.register(.ttin, handleTTIN)
+    signalHandler.register(.ttou, handleTTOU)
+    signalHandler.register(.child, handleChild)
     sharedHandler = signalHandler
     SignalHandler.registerSignals()
   }
@@ -51,7 +51,7 @@ public final class Arbiter<Worker : WorkerType> {
   var running = false
 
   // Main run loop for the master process
-  @noreturn public func run(daemonize daemonize: Bool = false) throws {
+  public func run(daemonize: Bool = false) throws -> Never  {
     running = true
 
     try registerSignals()
@@ -87,7 +87,7 @@ public final class Arbiter<Worker : WorkerType> {
     halt()
   }
 
-  func stop(graceful: Bool = true) {
+  func stop(_ graceful: Bool = true) {
     listeners.forEach { $0.close() }
 
     if graceful {
@@ -99,7 +99,7 @@ public final class Arbiter<Worker : WorkerType> {
     running = false
   }
 
-  @noreturn func halt(exitStatus: Int32 = 0) {
+  func halt(_ exitStatus: Int32 = 0) -> Never  {
     stop()
     logger.info("Shutting down")
     exit(exitStatus)
@@ -115,7 +115,8 @@ public final class Arbiter<Worker : WorkerType> {
       timeout = timeval(tv_sec: 30, tv_usec: 0)
     }
 
-    let result = try? select(reads: [signalHandler.pipe.read], timeout: timeout)
+    let fds = [signalHandler.pipe.read]
+    let result = try? select(reads: fds, writes: [Socket](), errors: [Socket](), timeout: timeout)
     let read = result?.reads ?? []
 
     if !read.isEmpty {
@@ -161,7 +162,7 @@ public final class Arbiter<Worker : WorkerType> {
         break
       }
 
-      workers.removeValueForKey(pid)
+      workers.removeValue(forKey: pid)
     }
 
     manageWorkers()
@@ -198,7 +199,7 @@ public final class Arbiter<Worker : WorkerType> {
       if lastUpdate >= configuration.timeout {
         if worker.aborted {
           if kill(pid, SIGKILL) == ESRCH {
-            workers.removeValueForKey(pid)
+            workers.removeValue(forKey: pid)
           }
         } else {
           worker.aborted = true
@@ -206,7 +207,7 @@ public final class Arbiter<Worker : WorkerType> {
           logger.critical("Worker timeout (pid: \(pid))")
 
           if kill(pid, SIGABRT) == ESRCH {
-            workers.removeValueForKey(pid)
+            workers.removeValue(forKey: pid)
           }
         }
       }
@@ -226,7 +227,7 @@ public final class Arbiter<Worker : WorkerType> {
   }
 
   // Kill all workers with given signal
-  func killWorkers(signal: Int32) {
+  func killWorkers(_ signal: Int32) {
     for pid in workers.keys {
       kill(pid, signal)
     }

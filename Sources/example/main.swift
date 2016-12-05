@@ -3,5 +3,5 @@ import Inquiline
 
 
 serve { _ in
-  Response(.ok, contentType: "text/plain", content: "Hello World")
+  Response(.ok, contentType: "text/plain", content: "Hello World\n")
 }

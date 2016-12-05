@@ -1,5 +1,3 @@
-#if os(OSX)
-import Darwin
 import Dispatch
 import fd
 import Nest
@@ -131,4 +129,3 @@ extension Socket {
   }
 */
 }
-#endif

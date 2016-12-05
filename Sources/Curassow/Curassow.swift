@@ -96,12 +96,8 @@ public func serve(_ closure: @escaping (RequestType) -> ResponseType) -> Never  
       let arbiter = Arbiter<SynchronousWorker>(configuration: configuration, workers: workers, application: closure)
       try arbiter.run(daemonize: daemonize)
     } else if workerType == "dispatch" || workerType == "gcd" {
-#if os(OSX)
       let arbiter = Arbiter<DispatchWorker>(configuration: configuration, workers: workers, application: closure)
       try arbiter.run(daemonize: daemonize)
-#else
-      throw ServeError("The dispatch worker is only supported on OS X")
-#endif
     } else {
       throw ArgumentError.invalidType(value: workerType, type: "worker type", argument: "worker-type")
     }

@@ -73,7 +73,7 @@ public final class SynchronousWorker : WorkerType {
 
   func runOne(_ listener: Socket) {
     while isAlive {
-      sharedHandler?.process()
+      _ = sharedHandler?.process()
       notify()
       accept(listener)
 
@@ -81,13 +81,13 @@ public final class SynchronousWorker : WorkerType {
         return
       }
 
-      wait()
+      _ = wait()
     }
   }
 
   func runMultiple(_ listeners: [Socket]) {
     while isAlive {
-      sharedHandler?.process()
+      _ = sharedHandler?.process()
       notify()
 
       let sockets = wait().filter {

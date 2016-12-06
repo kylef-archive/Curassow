@@ -106,7 +106,7 @@ final public class DispatchWorker :  WorkerType {
     sendResponse(client, response: response)
 
     client.shutdown()
-    client.close()
+     _ = try? client.close()
   }
 }
 
@@ -120,7 +120,7 @@ extension Socket {
     }
 
     source.setCancelHandler { [unowned self] in
-      self.close()
+       _ = try? self.close()
     }
 
     source.resume()

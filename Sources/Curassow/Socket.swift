@@ -5,9 +5,7 @@ private let sock_stream = Int32(SOCK_STREAM.rawValue)
 
 private let system_accept = Glibc.accept
 private let system_bind = Glibc.bind
-private let system_close = Glibc.close
 private let system_listen = Glibc.listen
-private let system_read = Glibc.read
 private let system_send = Glibc.send
 private let system_write = Glibc.write
 private let system_shutdown = Glibc.shutdown
@@ -20,9 +18,7 @@ private let sock_stream = SOCK_STREAM
 
 private let system_accept = Darwin.accept
 private let system_bind = Darwin.bind
-private let system_close = Darwin.close
 private let system_listen = Darwin.listen
-private let system_read = Darwin.read
 private let system_send = Darwin.send
 private let system_write = Darwin.write
 private let system_shutdown = Darwin.shutdown
@@ -78,7 +74,7 @@ class Unreader : Readable {
 
 
 /// Represents a TCP AF_INET/AF_UNIX socket
-final public class Socket : Readable, FileDescriptor, Listener, Connection {
+final public class Socket : Readable, FileDescriptor, ReadableFileDescriptor, Listener, Connection {
   typealias Port = UInt16
 
   public let fileNumber: FileNumber
@@ -172,10 +168,6 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
     return Socket(descriptor: descriptor)
   }
 
-  func close() {
-    _ = system_close(fileNumber)
-  }
-
   func shutdown() {
     _ = system_shutdown(fileNumber, Int32(SHUT_RDWR))
   }
@@ -204,15 +196,6 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
     _ = output.withCString { bytes in
       system_write(fileNumber, bytes, Int(strlen(bytes)))
     }
-  }
-
-  func read(_ bytes: Int) throws -> [CChar] {
-    let data = Data(capacity: bytes)
-    let bytes = system_read(fileNumber, data.bytes, data.capacity)
-    guard bytes != -1 else {
-        throw SocketError()
-    }
-    return Array(data.characters[0..<bytes])
   }
 
   /// Returns whether the socket is set to non-blocking or blocking
@@ -259,5 +242,49 @@ final public class Socket : Readable, FileDescriptor, Listener, Connection {
 
   fileprivate func htons(_ value: CUnsignedShort) -> CUnsignedShort {
     return (value << 8) + (value >> 8)
+  }
+}
+
+extension FileDescriptor {
+  /// Returns whether the socket is set to non-blocking or blocking
+  var blocking: Bool {
+    get {
+      let flags = fcntl(fileNumber, F_GETFL, 0)
+      return flags & O_NONBLOCK == 0
+    }
+
+    set {
+      let flags = fcntl(fileNumber, F_GETFL, 0)
+      let newFlags: Int32
+
+      if newValue {
+        newFlags = flags & ~O_NONBLOCK
+      } else {
+        newFlags = flags | O_NONBLOCK
+      }
+
+      let _ = fcntl(fileNumber, F_SETFL, newFlags)
+    }
+  }
+
+  /// Returns whether the socket is has the FD_CLOEXEC flag set
+  var closeOnExec: Bool {
+    get {
+      let flags = fcntl(fileNumber, F_GETFL, 0)
+      return flags & FD_CLOEXEC == 1
+    }
+
+    set {
+      let flags = fcntl(fileNumber, F_GETFL, 0)
+      let newFlags: Int32
+
+      if newValue {
+        newFlags = flags ^ FD_CLOEXEC
+      } else {
+        newFlags = flags | FD_CLOEXEC
+      }
+
+      let _ = fcntl(fileNumber, F_SETFL, newFlags)
+    }
   }
 }

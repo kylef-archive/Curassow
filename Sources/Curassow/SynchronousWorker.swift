@@ -91,7 +91,7 @@ public final class SynchronousWorker : WorkerType {
       notify()
 
       let sockets = wait().filter {
-        $0.fileNumber != sharedHandler!.pipe.read.fileNumber
+        $0.fileNumber != sharedHandler!.pipe.reader.fileNumber
       }
 
       sockets.forEach(accept)
@@ -121,7 +121,7 @@ public final class SynchronousWorker : WorkerType {
       timeout = timeval(tv_sec: 120, tv_usec: 0)
     }
 
-    let socks = listeners + [sharedHandler!.pipe.read]
+    let socks = listeners + [Socket(descriptor: sharedHandler!.pipe.reader.fileNumber)]
     let result = try? fd.select(reads: socks, writes: [Socket](), errors: [Socket](), timeout: timeout)
     return result?.reads ?? []
   }
@@ -153,7 +153,7 @@ public final class SynchronousWorker : WorkerType {
     sendResponse(client, response: response)
 
     client.shutdown()
-    client.close()
+    _ = try? client.close()
   }
 }
 

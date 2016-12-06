@@ -46,8 +46,8 @@ func testHTTPParser() {
     }
 
     $0.after {
-      inSocket?.close()
-      outSocket?.close()
+      try! inSocket?.close()
+      try! outSocket?.close()
     }
 
     $0.it("can parse a HTTP request") {
@@ -98,7 +98,7 @@ func testHTTPParser() {
     }
 
     $0.it("throws an error when the client disconnects before sending an HTTP request") {
-      outSocket.close()
+      try outSocket.close()
       outSocket = nil
 
       try expect(try parser.parse()).toThrow()
@@ -106,7 +106,7 @@ func testHTTPParser() {
 
     $0.it("throws an error when the client disconnects before sending the entire message body") {
       outSocket.write("GET / HTTP/1.1\r\nContent-Length: 42\r\n")
-      outSocket.close()
+      try outSocket.close()
       outSocket = nil
 
       try expect(try parser.parse()).toThrow()

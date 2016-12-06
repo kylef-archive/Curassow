@@ -88,7 +88,7 @@ public final class Arbiter<Worker : WorkerType> {
   }
 
   func stop(_ graceful: Bool = true) {
-    listeners.forEach { $0.close() }
+    listeners.forEach { _ = try? $0.close() }
 
     if graceful {
       killWorkers(SIGTERM)
@@ -115,13 +115,13 @@ public final class Arbiter<Worker : WorkerType> {
       timeout = timeval(tv_sec: 30, tv_usec: 0)
     }
 
-    let fds = [signalHandler.pipe.read]
+    let fds = [Socket(descriptor: signalHandler.pipe.reader.fileNumber)]
     let result = try? select(reads: fds, writes: [Socket](), errors: [Socket](), timeout: timeout)
     let read = result?.reads ?? []
 
     if !read.isEmpty {
       do {
-        while try signalHandler.pipe.read.read(1).count > 0 {}
+        while try signalHandler.pipe.reader.read(1).count > 0 {}
       } catch {}
     }
   }

@@ -4,6 +4,8 @@ import Glibc
 import Darwin.C
 #endif
 
+import fd
+
 var sharedHandler: SignalHandler?
 
 class SignalHandler {
@@ -34,20 +36,20 @@ class SignalHandler {
     signal(SIGCHLD, SIG_DFL)
   }
 
-  let pipe: (read: Socket, write: Socket)
+  let pipe: (reader: ReadableFileDescriptor, writer: WritableFileDescriptor)
   var signalQueue: [Signal] = []
 
   init() throws {
-    pipe = try Socket.pipe()
-    pipe.read.closeOnExec = true
-    pipe.read.blocking = false
-    pipe.write.closeOnExec = true
-    pipe.write.blocking = false
+    pipe = try fd.pipe()
+    pipe.reader.closeOnExec = true
+    pipe.reader.blocking = false
+    pipe.writer.closeOnExec = true
+    pipe.writer.blocking = false
   }
 
   // Wake up the process by writing to the pipe
   func wakeup() {
-    pipe.write.send(".")
+    _ = try? pipe.writer.write([46])
   }
 
   func handle(_ signal: Signal) {

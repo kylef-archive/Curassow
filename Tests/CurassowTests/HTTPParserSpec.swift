@@ -77,6 +77,16 @@ func testHTTPParser() {
       try expect(body[4]) == 101
     }
 
+    $0.it("provides the message body until Content-Length value with buffer size + 1 content length") {
+      let bufferSize = 8192
+      outSocket.write("GET / HTTP/1.1\r\nContent-Length: \(bufferSize + 1)\r\n\r\n" + String(repeating: "a", count: bufferSize + 1))
+
+      var request = try parser.parse()
+
+      let body = request.body!.collect()
+      try expect(body.count) == bufferSize + 1
+    }
+
     $0.it("throws an error when the client uses bad HTTP syntax") {
       outSocket.write("GET /\r\nHost: localhost\r\n\r\n")
       try expect(try parser.parse()).toThrow()

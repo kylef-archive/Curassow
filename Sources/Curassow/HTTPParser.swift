@@ -247,7 +247,7 @@ class ReaderPayload : PayloadType, PayloadConvertible, IteratorProtocol {
       return buffer
     }
 
-    if let remainingSize = remainingSize, remainingSize < 0 {
+    if let remainingSize = remainingSize, remainingSize <= 0 {
       return nil
     }
 

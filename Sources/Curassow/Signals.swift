@@ -36,7 +36,7 @@ class SignalHandler {
     signal(SIGCHLD, SIG_DFL)
   }
 
-  let pipe: (reader: ReadableFileDescriptor, writer: WritableFileDescriptor)
+  var pipe: (reader: ReadableFileDescriptor, writer: WritableFileDescriptor)
   var signalQueue: [Signal] = []
 
   init() throws {

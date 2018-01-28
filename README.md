@@ -24,10 +24,10 @@ you can add it to the list of dependencies in your `Package.swift`:
 import PackageDescription
 
 let package = Package(
-  name: "HelloWorld",
-  dependencies: [
-    .Package(url: "https://github.com/kylef/Curassow.git", majorVersion: 0, minor: 6),
-  ]
+    name: "HelloWorld",
+    dependencies: [
+       .package(url: "https://github.com/kylef/Curassow.git", from: "0.6.0"),
+    ]
 )
 ```
 

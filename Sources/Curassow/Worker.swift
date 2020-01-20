@@ -86,7 +86,7 @@ class WorkerTemp {
 #if os(Linux)
     let filename = Data(capacity: Int(PATH_MAX))
     let pointer = filename.bytes.bindMemory(to: CChar.self, capacity: filename.capacity)
-    let size = readlink("/proc/self/fd/\(descriptor)", pointer, filename.capacity)
+    let _ = readlink("/proc/self/fd/\(descriptor)", pointer, filename.capacity)
 #else
     let filename = Data(capacity: Int(MAXPATHLEN))
     if fcntl(descriptor, F_GETPATH, filename.bytes) == -1 {
